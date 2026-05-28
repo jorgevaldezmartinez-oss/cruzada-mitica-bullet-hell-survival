@@ -1,0 +1,2625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=portrait">
+    <title>Supervivencia Mítica: Cruzada Eterna</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=MedievalSharp&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0c0c0e;
+            font-family: 'MedievalSharp', cursive;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            transition: filter 0.3s ease;
+        }
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .interactive {
+            pointer-events: auto;
+        }
+        
+        .medieval-panel {
+            background: linear-gradient(135deg, rgba(42, 42, 42, 0.85), rgba(26, 26, 26, 0.85));
+            border: 2px solid rgba(139, 107, 34, 0.8);
+            box-shadow: 0 0 5px rgba(0,0,0,0.8);
+            color: #e5e5e5;
+            backdrop-filter: blur(2px);
+        }
+        @media (min-width: 768px) {
+            .medieval-panel {
+                border: 3px solid #8b6b22;
+                box-shadow: 0 0 10px rgba(0,0,0,0.8), inset 0 0 15px rgba(0,0,0,0.9);
+                background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            }
+        }
+        
+        .health-bar-container {
+            width: 70%;
+            max-width: 500px;
+            height: 10px;
+            background-color: #111;
+            border: 1px solid #5a4b2c;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0 auto 5px auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.9);
+            position: relative;
+        }
+        @media (min-width: 768px) {
+            .health-bar-container { height: 24px; border: 2px solid #5a4b2c; margin-bottom: 20px; width: 80%; }
+        }
+
+        .health-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7a0000, #c40000);
+            width: 100%;
+            transition: width 0.15s ease-out;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 50;
+            transition: opacity 0.3s;
+            overflow-y: auto;
+        }
+        .hidden {
+            display: none !important;
+        }
+        
+        .btn {
+            background: linear-gradient(to bottom, #4a3b22, #2a1f0d);
+            color: #d4af37;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            font-family: 'Cinzel', serif;
+            font-weight: bold;
+            cursor: pointer;
+            border: 2px solid #8b6b22;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+            max-width: 320px;
+        }
+        @media (min-width: 768px) {
+            .btn { padding: 15px 40px; font-size: 1.5rem; max-width: 450px; letter-spacing: 2px; }
+        }
+
+        .btn:hover {
+            transform: scale(1.05) translateY(-2px);
+            background: linear-gradient(to bottom, #5c4a2a, #382911);
+            box-shadow: 0 8px 20px rgba(212, 175, 55, 0.3);
+            color: #ffdf00;
+        }
+        
+        .btn-small { padding: 8px 16px; font-size: 1rem; max-width: 250px; }
+        @media (min-width: 768px) { .btn-small { padding: 10px 20px; font-size: 1.2rem; max-width: 350px; } }
+
+        .title-text {
+            font-family: 'Cinzel', serif;
+            text-shadow: 2px 2px 4px #000, 0 0 20px #8b0000;
+        }
+
+        .boss-alert {
+            animation: pulse-dark 1.5s infinite;
+            border-color: #8b0000 !important;
+        }
+        @keyframes pulse-dark {
+            0% { box-shadow: 0 0 15px #4a0000; }
+            50% { box-shadow: 0 0 30px #ff0000; transform: scale(1.02); }
+            100% { box-shadow: 0 0 15px #4a0000; }
+        }
+
+        /* --- CLASES DE EFECTOS CORRUPTOS (NIVEL SECRETO) --- */
+        .glitch-text { 
+            animation: glitch-skew 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite; 
+            color: #ff0000; 
+            text-shadow: 2px 2px #000; 
+        }
+        @keyframes glitch-skew {
+            0% { transform: skew(0deg); }
+            20% { transform: skew(-10deg); }
+            40% { transform: skew(10deg); }
+            60% { transform: skew(-5deg); }
+            80% { transform: skew(5deg); }
+            100% { transform: skew(0deg); }
+        }
+        .corrupted-health {
+            box-shadow: inset 0 0 15px #ff0000, 0 0 10px #8b0000 !important;
+            animation: health-glitch 0.2s infinite;
+        }
+        @keyframes health-glitch {
+            0% { filter: hue-rotate(0deg); }
+            50% { filter: hue-rotate(90deg) brightness(1.5); }
+            100% { filter: hue-rotate(0deg); }
+        }
+
+        #buffIndicator {
+            transition: opacity 0.3s;
+            text-shadow: 0 0 10px currentColor;
+        }
+        
+        .save-badge {
+            background-color: #225522;
+            color: #aaffaa;
+            border: 1px solid #44aa44;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: sans-serif;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        /* --- JOYSTICK VIRTUAL --- */
+        #joystickZone {
+            touch-action: none;
+            background: radial-gradient(circle, rgba(139, 107, 34, 0.1) 0%, rgba(42, 42, 42, 0.3) 100%);
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 130px;
+            height: 130px;
+        }
+        @media (min-width: 768px) {
+            #joystickZone { width: 160px; height: 160px; bottom: 50px; left: 50px; }
+        }
+
+        /* --- BLOQUEO VERTICAL ESTRICTO --- */
+        #orientation-warning {
+            display: none;
+        }
+        @media screen and (orientation: landscape) and (max-height: 600px) {
+            #orientation-warning {
+                display: flex !important;
+            }
+        }
+
+        /* --- FONDO DEL MENÚ PRINCIPAL --- */
+        .main-menu-bg {
+            background-color: #0c0c0e;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(139, 0, 0, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(212, 175, 55, 0.1) 0%, transparent 50%),
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.3) 10px, rgba(0,0,0,0.3) 20px);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Bloqueo de Pantalla Vertical -->
+    <div id="orientation-warning" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center text-center p-6 interactive">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-yellow-500 mb-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+        <h2 class="text-3xl font-black text-yellow-500 mb-4 title-text">Gira tu dispositivo</h2>
+        <p class="text-lg text-gray-300 max-w-sm">Para sobrevivir a la Cruzada Mítica, debes sostener tu dispositivo de forma <strong class="text-white">vertical</strong> (Portrait).</p>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD del Juego -->
+    <div id="hud" class="ui-layer hidden">
+        <div class="flex justify-between items-start p-1 md:p-4 text-xs md:text-xl font-bold font-['Cinzel'] pointer-events-none">
+            <div id="roundContainer" class="medieval-panel px-2 md:px-6 py-1 md:py-3 rounded text-center relative group flex flex-col items-center transition-all">
+                <div id="roundLabel">Oleada: <span id="roundDisplay" class="text-yellow-500">1/10</span></div>
+                <div class="text-[0.65rem] md:text-sm mt-0.5 font-bold text-gray-300" id="relicsContainerHUD">
+                    Reliquias: <span id="relicsDisplay" class="text-yellow-400">0/20</span>
+                </div>
+                <div id="checkpointIndicator" class="text-[0.5rem] md:text-xs text-green-400 mt-0.5 hidden">Guardado</div>
+            </div>
+            
+            <div class="flex flex-col gap-1 items-end interactive">
+                <div class="medieval-panel px-2 md:px-6 py-1 md:py-3 rounded text-sm md:text-2xl flex items-center gap-1">
+                    ⏳ <span id="timeDisplay" class="text-yellow-100">01:00</span>
+                </div>
+                <button id="pauseBtn" class="medieval-panel px-2 py-1 md:px-3 md:py-2 rounded hover:bg-yellow-900 transition-colors text-[0.65rem] md:text-sm cursor-pointer border border-[#8b6b22]">
+                    ⏸️
+                </button>
+            </div>
+        </div>
+
+        <div id="buffIndicator" class="absolute top-1/4 left-1/2 transform -translate-x-1/2 text-base md:text-2xl font-['Cinzel'] font-black opacity-0">
+            ESPEJISMO
+        </div>
+
+        <div id="joystickZone" class="border border-[#8b6b22] rounded-full hidden interactive z-50">
+            <div id="joystickKnob" class="absolute top-1/2 left-1/2 w-6 h-6 md:w-10 md:h-10 bg-[#d4af37] border border-white rounded-full transform -translate-x-1/2 -translate-y-1/2 pointer-events-none shadow-[0_0_5px_gold]"></div>
+        </div>
+
+        <div class="w-full text-center pb-1 md:pb-4 px-4 relative z-40 pointer-events-none flex justify-center gap-4">
+            <div class="flex-1 max-w-[500px]">
+                <div class="text-gray-400 font-bold mb-0.5 text-[0.6rem] md:text-xl font-['Cinzel'] tracking-widest drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">P1 Vitalidad</div>
+                <div id="healthContainerP1" class="health-bar-container w-full">
+                    <div id="healthFill1" class="health-bar-fill"></div>
+                </div>
+            </div>
+            <div class="flex-1 max-w-[500px] hidden" id="healthContainer2">
+                <div class="text-gray-400 font-bold mb-0.5 text-[0.6rem] md:text-xl font-['Cinzel'] tracking-widest drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">P2 Vitalidad</div>
+                <div id="healthContainerP2" class="health-bar-container w-full">
+                    <div id="healthFill2" class="health-bar-fill" style="background: linear-gradient(90deg, #00007a, #0000c4);"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla de Pausa -->
+    <div id="pauseScreen" class="screen interactive hidden" style="background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(5px);">
+        <h2 class="text-3xl md:text-6xl font-black text-yellow-500 mb-6 title-text text-center">JUEGO PAUSADO</h2>
+        <div class="flex flex-col gap-3 items-center w-full px-6">
+            <button id="resumeBtn" class="btn">Continuar</button>
+            <button id="restartPauseBtn" class="btn btn-small" style="background: linear-gradient(to bottom, #8b6b22, #4a3b22); border-color:#d4af37;">Reiniciar Oleada</button>
+            <button id="quitToMenuBtn" class="btn btn-small" style="background: linear-gradient(to bottom, #5a1a1a, #3a0a0a); border-color:#aa3333;">Abandonar</button>
+        </div>
+    </div>
+
+    <!-- Menú Principal / Lobby -->
+    <div id="mainMenu" class="screen interactive main-menu-bg">
+        <div class="absolute top-0 left-0 w-full h-full pointer-events-none" style="background: radial-gradient(circle at 50% 50%, transparent 20%, rgba(0,0,0,0.8) 100%);"></div>
+        
+        <div class="absolute top-4 right-4 bg-[#1a1a1a] border-2 border-[#8b6b22] rounded-lg px-4 py-2 flex items-center gap-2 text-[#d4af37] font-bold text-sm md:text-xl shadow-[0_0_10px_#8b6b22]">
+            <span>💰</span> <span id="lobbyCoinCount">0</span>
+        </div>
+
+        <div class="z-10 flex flex-col items-center w-full max-w-3xl px-4">
+            <h1 class="text-5xl md:text-8xl font-black mb-2 title-text text-[#ffdf00] text-center tracking-widest drop-shadow-[0_5px_5px_rgba(0,0,0,1)] uppercase">
+                Cruzada Mítica
+            </h1>
+            <h3 class="text-lg md:text-2xl text-gray-400 mb-8 font-['Cinzel'] tracking-[0.2em] text-center">Sobrevive al Abismo</h3>
+            
+            <div class="w-full flex flex-col md:flex-row gap-6 mb-8">
+                <!-- Panel de Instrucciones -->
+                <div class="flex-1 medieval-panel p-4 md:p-6 rounded-xl flex flex-col justify-center">
+                    <h4 class="text-[#d4af37] text-xl font-bold mb-3 border-b border-[#5a4b2c] pb-2 text-center">El Mandato</h4>
+                    <p id="controlsText" class="text-sm md:text-lg text-gray-300 text-center leading-relaxed"></p>
+                    <div class="mt-4 bg-red-900/30 border border-red-800 p-2 rounded text-center shadow-[0_0_5px_#8b0000]">
+                        <p class="text-red-400 font-bold text-xs md:text-sm">¡Recolecta reliquias y huye de la Niebla Radiante!</p>
+                    </div>
+                    <!-- Indicador de Aspecto Abisal -->
+                    <div id="skinIndicator" class="mt-2 text-center hidden">
+                        <span class="text-[0.6rem] md:text-xs text-purple-400 font-bold bg-purple-900/30 px-2 py-1 rounded shadow-[0_0_5px_purple]">🔮 Aspecto Abisal Equipado</span>
+                    </div>
+                </div>
+
+                <!-- Panel de Botones Principales -->
+                <div class="flex-1 flex flex-col gap-4 justify-center">
+                    <button id="startBtn" class="btn w-full h-14 text-xl md:text-2xl shadow-[0_0_15px_rgba(212,175,55,0.4)]">Comenzar Purga</button>
+                    <button id="openCheckpointBtn" class="btn hidden w-full h-14 relative" style="background: linear-gradient(to bottom, #1a4a1a, #0d2a0d); border-color:#2a8a2a;">
+                        Puntos de Control
+                        <div id="saveInfoBadge" class="absolute -top-3 -right-3 save-badge">Máx: Oleada X</div>
+                    </button>
+                    <button id="openShopBtn" class="btn w-full h-14" style="background: linear-gradient(to bottom, #5a4b2c, #3a2a0c); border-color: #ffbf00;">
+                        🏪 El Santuario
+                    </button>
+                </div>
+            </div>
+
+            <div class="w-full flex justify-center">
+                <button id="toggleCoopBtn" class="btn btn-small w-auto px-8" style="background: linear-gradient(to bottom, #1e3c72, #2a5298); border-color: #4facfe;">
+                    👤 Modo: 1 Jugador
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Santuario de Mejoras (Tienda) -->
+    <div id="shopScreen" class="screen interactive hidden" style="background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(8px);">
+        <div class="w-full max-w-6xl px-4 md:px-8 py-4 overflow-y-auto max-h-full">
+            <div class="flex justify-between items-center mb-6 border-b-2 border-yellow-700 pb-3">
+                <h2 class="text-2xl md:text-5xl font-bold text-[#d4af37] title-text">Santuario de Mejoras</h2>
+                <div class="bg-gray-900 border-2 border-yellow-500 rounded-lg px-3 py-1.5 flex items-center gap-2 text-yellow-400 font-bold text-base md:text-xl">
+                    Monedas: <span id="shopCoinCount">0</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 text-left">
+                <div class="medieval-panel p-3 rounded-lg flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg md:text-xl font-bold text-red-400 font-['Cinzel']">Vigor Divino (Vida)</h3>
+                        <p class="text-xs text-gray-400 mt-1">Aumenta la salud máxima (+100 PS por nivel).</p>
+                    </div>
+                    <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-700">
+                        <span class="text-xs md:text-sm font-bold">Nivel: <span id="lvlMaxHealth" class="text-yellow-500">0/10</span></span>
+                        <button onclick="buyUpgrade('maxHealth')" id="btnBuyMaxHealth" class="btn btn-small text-xs py-1 px-3" style="width: auto;">Mejorar: <span id="costMaxHealth">150</span></button>
+                    </div>
+                </div>
+
+                <div class="medieval-panel p-3 rounded-lg flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg md:text-xl font-bold text-blue-400 font-['Cinzel']">Suelas de Hermes</h3>
+                        <p class="text-xs text-gray-400 mt-1">Desplázate con mayor rapidez y agilidad (+0.5 Vel por nivel).</p>
+                    </div>
+                    <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-700">
+                        <span class="text-xs md:text-sm font-bold">Nivel: <span id="lvlSpeed" class="text-yellow-500">0/10</span></span>
+                        <button onclick="buyUpgrade('speed')" id="btnBuySpeed" class="btn btn-small text-xs py-1 px-3" style="width: auto;">Mejorar: <span id="costSpeed">150</span></button>
+                    </div>
+                </div>
+
+                <div class="medieval-panel p-3 rounded-lg flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg md:text-xl font-bold text-green-400 font-['Cinzel']">Alquimia Alargada</h3>
+                        <p class="text-xs text-gray-400 mt-1">Los power-ups duran 1.5s más por nivel.</p>
+                    </div>
+                    <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-700">
+                        <span class="text-xs md:text-sm font-bold">Nivel: <span id="lvlBuffDuration" class="text-yellow-500">0/5</span></span>
+                        <button onclick="buyUpgrade('buffDuration')" id="btnBuyBuffDuration" class="btn btn-small text-xs py-1 px-3" style="width: auto;">Mejorar: <span id="costBuffDuration">200</span></button>
+                    </div>
+                </div>
+
+                <div class="medieval-panel p-3 rounded-lg flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg md:text-xl font-bold text-yellow-400 font-['Cinzel']">Tributo del Rey</h3>
+                        <p class="text-xs text-gray-400 mt-1">Aumenta permanentemente un +25% la ganancia de monedas.</p>
+                    </div>
+                    <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-700">
+                        <span class="text-xs md:text-sm font-bold">Nivel: <span id="lvlCoinBonus" class="text-yellow-500">0/5</span></span>
+                        <button onclick="buyUpgrade('coinBonus')" id="btnBuyCoinBonus" class="btn btn-small text-xs py-1 px-3" style="width: auto;">Mejorar: <span id="costCoinBonus">250</span></button>
+                    </div>
+                </div>
+
+                <div class="medieval-panel p-3 rounded-lg flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg md:text-xl font-bold text-purple-400 font-['Cinzel']">Imán Rúnico</h3>
+                        <p class="text-xs text-gray-400 mt-1">Aumenta el radio para recoger reliquias y mejoras (+20% por nivel).</p>
+                    </div>
+                    <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-700">
+                        <span class="text-xs md:text-sm font-bold">Nivel: <span id="lvlMagnet" class="text-yellow-500">0/5</span></span>
+                        <button onclick="buyUpgrade('magnet')" id="btnBuyMagnet" class="btn btn-small text-xs py-1 px-3" style="width: auto;">Mejorar: <span id="costMagnet">150</span></button>
+                    </div>
+                </div>
+
+                <div class="medieval-panel p-3 rounded-lg flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg md:text-xl font-bold text-orange-400 font-['Cinzel']">Coraza Sagrada</h3>
+                        <p class="text-xs text-gray-400 mt-1">Reduce el daño de todos los ataques enemigos (-5% por nivel).</p>
+                    </div>
+                    <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-700">
+                        <span class="text-xs md:text-sm font-bold">Nivel: <span id="lvlArmor" class="text-yellow-500">0/5</span></span>
+                        <button onclick="buyUpgrade('armor')" id="btnBuyArmor" class="btn btn-small text-xs py-1 px-3" style="width: auto;">Mejorar: <span id="costArmor">300</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-center">
+                <button id="closeShopBtn" class="btn btn-small" style="background: transparent; border: 1px solid #8b6b22; color: #d4af37;">
+                    Volver al Menú
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selector de Checkpoints -->
+    <div id="checkpointScreen" class="screen interactive hidden" style="background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(8px);">
+        <div class="w-full max-w-4xl px-4 md:px-8 py-4 overflow-y-auto max-h-full">
+            <div class="flex justify-between items-center mb-6 border-b-2 border-green-700 pb-3">
+                <h2 class="text-2xl md:text-5xl font-bold text-green-500 title-text">Puntos de Control</h2>
+            </div>
+            
+            <p class="text-gray-300 text-sm md:text-lg mb-6 text-center font-['Cinzel']">Selecciona desde qué oleada quieres comenzar tu cruzada.</p>
+
+            <div id="checkpointList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 text-center">
+                <!-- Botones generados dinámicamente -->
+            </div>
+
+            <div class="flex justify-center">
+                <button id="closeCheckpointBtn" class="btn btn-small" style="background: transparent; border: 1px solid #8b6b22; color: #d4af37;">
+                    Volver al Menú
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameOverScreen" class="screen interactive hidden">
+        <h2 class="text-4xl md:text-7xl font-black text-red-700 mb-2 title-text text-center">HAS PERECIDO</h2>
+        <p id="gameOverStats" class="text-base md:text-2xl mb-2 text-gray-400 font-['Cinzel'] text-center px-2">Tu alma se perdió.</p>
+        
+        <div class="medieval-panel px-4 py-2 mb-6 rounded-lg text-yellow-400 font-bold flex items-center gap-2 text-base md:text-xl animate-bounce">
+            Ganaste: <span id="gameOverCoinsGained">0</span> Monedas Medievales
+        </div>
+
+        <div class="flex flex-col gap-3 items-center w-full px-6">
+            <button id="restartBtn" class="btn">Desde Checkpoint</button>
+            <button id="restartFullBtn" class="btn btn-small">Reiniciar Todo</button>
+            <button id="goMenuBtn" class="btn btn-small" style="background: transparent; border: 1px solid #666; color:#aaa; box-shadow:none;">Menú Principal</button>
+        </div>
+    </div>
+
+    <!-- Victoria Estandar -->
+    <div id="victoryScreen" class="screen interactive hidden">
+        <h2 class="text-4xl md:text-7xl font-black text-yellow-500 mb-2 title-text drop-shadow-[0_0_30px_gold] text-center">LEYENDA FORJADA</h2>
+        <p class="text-base md:text-2xl mb-2 text-gray-300 max-w-2xl text-center font-['Cinzel'] px-6">Has derrotado al Rey Demonio.</p>
+        
+        <div class="medieval-panel px-4 py-2 mb-6 rounded-lg text-yellow-400 font-bold flex items-center gap-2 text-base md:text-xl animate-bounce">
+            👑 ¡Premio Real!: <span id="victoryCoinsGained">0</span> Monedas Medievales
+        </div>
+
+        <div class="w-full flex justify-center px-6">
+            <button id="playAgainBtn" class="btn">Nueva Partida</button>
+        </div>
+    </div>
+
+    <!-- Victoria Secreta (Nivel del Abismo) -->
+    <div id="secretVictoryScreen" class="screen interactive hidden" style="background: rgba(5, 0, 15, 0.98);">
+        <h2 class="text-4xl md:text-7xl font-black text-purple-600 mb-2 title-text drop-shadow-[0_0_30px_purple] text-center">EL ABISMO DOMADO</h2>
+        <p class="text-base md:text-2xl mb-2 text-gray-300 max-w-2xl text-center font-['Cinzel'] px-6">Has sobrevivido a la locura y escapado de la oscuridad absoluta.</p>
+        
+        <div class="medieval-panel border-purple-800 px-4 py-3 mb-4 rounded-lg text-yellow-400 font-bold flex flex-col items-center gap-2 text-base md:text-xl animate-bounce shadow-[0_0_20px_purple]">
+            <span>🌌 Recompensa Oculta:</span>
+            <span class="text-3xl">+10,000 Monedas Especiales</span>
+        </div>
+        
+        <div class="mb-8 text-center px-2">
+            <p class="text-xl text-red-500 font-bold glitch-text mb-2">NUEVO PODER: ASPECTO ABISAL DESBLOQUEADO</p>
+            <p class="text-xs md:text-sm text-gray-500 italic max-w-lg mx-auto">"Has asimilado a la Sombra de Argal. Su oscuridad ahora camina a tu lado. La Niebla Radiante ha aprendido a temerte."</p>
+        </div>
+        
+        <p class="text-sm md:text-lg mb-8 text-gray-400 font-['Cinzel'] text-center px-2">"La niebla no destruyó el reino; solo reveló lo que Argal enterró."</p>
+
+        <div class="w-full flex justify-center px-6">
+            <button id="secretToMenuBtn" class="btn" style="background: linear-gradient(to bottom, #4b0082, #1a0033); border-color:#8b008b; color:#e5e5e5;">Volver al Menú</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const mainMenu = document.getElementById('mainMenu');
+        const shopScreen = document.getElementById('shopScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const victoryScreen = document.getElementById('victoryScreen');
+        const secretVictoryScreen = document.getElementById('secretVictoryScreen');
+        const pauseScreen = document.getElementById('pauseScreen');
+        const checkpointScreen = document.getElementById('checkpointScreen');
+        const hud = document.getElementById('hud');
+        
+        const roundDisplay = document.getElementById('roundDisplay');
+        const relicsDisplay = document.getElementById('relicsDisplay');
+        const relicsContainerHUD = document.getElementById('relicsContainerHUD');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const gameOverStats = document.getElementById('gameOverStats');
+        const roundContainer = document.getElementById('roundContainer');
+        const roundLabel = document.getElementById('roundLabel');
+        const checkpointIndicator = document.getElementById('checkpointIndicator');
+        const buffIndicator = document.getElementById('buffIndicator');
+        const controlsText = document.getElementById('controlsText');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const healthContainerP1 = document.getElementById('healthContainerP1');
+        const healthContainerP2 = document.getElementById('healthContainerP2');
+        
+        const btnOpenCheckpoint = document.getElementById('openCheckpointBtn');
+        const saveInfoBadge = document.getElementById('saveInfoBadge');
+
+        let coins = 0;
+        let darkSkinUnlocked = false; // RECOMPENSA SECRETA
+        
+        let upgrades = {
+            maxHealth: 0,   
+            speed: 0,       
+            buffDuration: 0,
+            coinBonus: 0,
+            magnet: 0,
+            armor: 0
+        };
+
+        const UPGRADE_LIMITS = { maxHealth: 10, speed: 10, buffDuration: 5, coinBonus: 5, magnet: 5, armor: 5 };
+        const UPGRADE_COSTS = {
+            maxHealth: [150, 300, 450, 600, 750, 900, 1050, 1200, 1350, 1500],
+            speed: [150, 250, 400, 600, 800, 1000, 1200, 1400, 1600, 1800],
+            buffDuration: [200, 350, 500, 650, 800],
+            coinBonus: [250, 500, 750, 1000, 1250],
+            magnet: [150, 300, 450, 600, 750],
+            armor: [300, 500, 700, 900, 1100]
+        };
+
+        // --- CONSTANTES Y VARIABLES PARA MENSAJES INQUIETANTES ---
+        const SECRET_MESSAGES = [
+            "No debiste bajar.",
+            "Argal no recuerda este lugar.",
+            "La niebla te está aprendiendo.",
+            "Corre cuando deje de sonar.",
+            "E R R O R",
+            "¿Estás seguro de que sigues vivo?"
+        ];
+        let backgroundMessages = [];
+        let lastMessageSpawn = 0;
+
+        class BackgroundMessage {
+            constructor(text, cw, ch) {
+                this.text = text;
+                this.x = Math.random() * (cw * 0.7) + (cw * 0.15); 
+                this.y = Math.random() * (ch * 0.6) + (ch * 0.2);
+                this.life = 0;
+                this.maxLife = 300 + Math.random() * 150; 
+                this.alpha = 0;
+                this.rot = (Math.random() - 0.5) * 0.15;
+            }
+            update() {
+                this.life++;
+                if (this.life < 60) this.alpha = this.life / 60;
+                else if (this.life > this.maxLife - 60) this.alpha = (this.maxLife - this.life) / 60;
+                else this.alpha = 1;
+                this.y -= 0.1 * gameScale; 
+                return this.life < this.maxLife;
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rot);
+                ctx.globalAlpha = this.alpha * 0.3; 
+                ctx.fillStyle = '#ff0000'; 
+                ctx.font = `bold ${28 * gameScale}px 'Cinzel', serif`;
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#ff0000';
+                ctx.fillText(this.text, 0, 0);
+                ctx.restore();
+            }
+        }
+
+        // --- CLASE DEL MINIJAFE SECRETO: LA SOMBRA DE ARGAL ---
+        class ShadowOfArgal {
+            constructor() {
+                this.x = canvas.width / 2;
+                this.y = -150 * gameScale;
+                this.speed = (isTouchDevice ? 1.2 : 1.7) * gameScale; // Reducida velocidad para ser más fácil
+                this.hoverOffset = 0;
+                this.pulse = 0;
+            }
+            get hitRadius() { return 45 * gameScale; }
+            
+            update(dt, alivePlayers) {
+                this.pulse += 0.05;
+                this.hoverOffset += 0.03;
+                
+                // Seguir al jugador más cercano implacablemente
+                if (alivePlayers.length > 0) {
+                    let target = alivePlayers[0];
+                    let minDist = Infinity;
+                    for (let p of alivePlayers) {
+                        let d = Math.hypot(p.x - this.x, p.y - this.y);
+                        if (d < minDist) { minDist = d; target = p; }
+                    }
+                    
+                    let dx = target.x - this.x;
+                    let dy = target.y - this.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 0) {
+                        this.x += (dx/dist) * this.speed * activeEffects.freezeMultiplier;
+                        this.y += (dy/dist) * this.speed * activeEffects.freezeMultiplier;
+                    }
+                }
+            }
+            
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y + Math.cos(this.hoverOffset) * 15 * gameScale);
+                ctx.scale(gameScale, gameScale);
+                
+                // Aura oscura y corrupta
+                ctx.shadowBlur = 40 + Math.sin(this.pulse) * 20;
+                ctx.shadowColor = '#8b0000';
+                
+                // Cuerpo amorfo
+                ctx.fillStyle = '#050005';
+                ctx.beginPath();
+                ctx.moveTo(0, -70);
+                ctx.quadraticCurveTo(-50, -30, -40, 50);
+                ctx.quadraticCurveTo(0, 70, 40, 50);
+                ctx.quadraticCurveTo(50, -30, 0, -70);
+                ctx.fill();
+
+                // Glitches rojos intermitentes
+                if (Math.random() < 0.3) {
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.6)';
+                    ctx.fillRect(-50, (Math.random()-0.5)*100, 100, 3);
+                }
+
+                // Ojos rojos brillantes
+                ctx.shadowBlur = 25;
+                ctx.shadowColor = '#ff0000';
+                ctx.fillStyle = '#ff0000';
+                ctx.beginPath(); ctx.ellipse(-15, -25, 8, 4, 0, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(15, -25, 8, 4, 0, 0, Math.PI*2); ctx.fill();
+                
+                // Nombre distorsionado
+                ctx.fillStyle = `rgba(255, 0, 0, ${0.4 + Math.sin(this.pulse)*0.2})`;
+                ctx.font = `bold 16px 'Cinzel', serif`;
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 0;
+                ctx.fillText("LA SOMBRA DE ARGAL", 0, -85);
+
+                ctx.restore();
+            }
+        }
+
+        function openShop() {
+            mainMenu.classList.add('hidden');
+            shopScreen.classList.remove('hidden');
+            updateShopUI();
+        }
+
+        function closeShop() {
+            shopScreen.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
+        }
+
+        function openCheckpoints() {
+            mainMenu.classList.add('hidden');
+            checkpointScreen.classList.remove('hidden');
+            let list = document.getElementById('checkpointList');
+            list.innerHTML = '';
+            
+            let maxCheckpoint = loadSaveData();
+            let availableCheckpoints = [1];
+            
+            if (isTouchDevice) {
+                for(let i = 2; i <= 10; i+=2) {
+                    if (i <= maxCheckpoint) availableCheckpoints.push(i);
+                }
+            } else {
+                [3, 6, 9, 10].forEach(cp => {
+                    if (cp <= maxCheckpoint) availableCheckpoints.push(cp);
+                });
+            }
+            if (maxCheckpoint === 10 && !availableCheckpoints.includes(10)) availableCheckpoints.push(10);
+
+            availableCheckpoints.forEach(cp => {
+                let btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.innerText = `Oleada ${cp}`;
+                btn.style.background = 'linear-gradient(to bottom, #1a4a1a, #0d2a0d)';
+                btn.style.borderColor = '#2a8a2a';
+                btn.style.color = '#aaffaa';
+                btn.onclick = () => {
+                    closeCheckpoints();
+                    startGame(false, cp);
+                };
+                list.appendChild(btn);
+            });
+        }
+
+        function closeCheckpoints() {
+            checkpointScreen.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
+        }
+
+        function showMainMenu() {
+            isPlaying = false;
+            isPaused = false;
+            cancelAnimationFrame(animationId);
+            pauseScreen.classList.add('hidden'); 
+            gameOverScreen.classList.add('hidden');
+            victoryScreen.classList.add('hidden'); 
+            secretVictoryScreen.classList.add('hidden');
+            checkpointScreen.classList.add('hidden');
+            hud.classList.add('hidden');
+            joystickZone.classList.add('hidden'); 
+            initMenu(); 
+            mainMenu.classList.remove('hidden');
+        }
+
+        document.getElementById('openShopBtn').addEventListener('click', openShop);
+        document.getElementById('closeShopBtn').addEventListener('click', closeShop);
+        document.getElementById('openCheckpointBtn').addEventListener('click', openCheckpoints);
+        document.getElementById('closeCheckpointBtn').addEventListener('click', closeCheckpoints);
+
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+
+        let gameScale = 1.0;
+        
+        function updateScale() {
+            gameScale = (isTouchDevice || window.innerWidth <= 768) ? 0.6 : 1.0;
+        }
+
+        let isCoop = false;
+        document.getElementById('toggleCoopBtn').addEventListener('click', (e) => {
+            isCoop = !isCoop;
+            e.target.innerText = isCoop ? '👥 Modo: 2 Jugadores' : '👤 Modo: 1 Jugador';
+        });
+
+        let animationId;
+        let isPlaying = false;
+        let isPaused = false;
+        let pauseStartTime = 0;
+        let players = [];
+        
+        let screenShake = 0;
+        function triggerScreenShake(intensity) {
+            if (screenShake < intensity) screenShake = intensity;
+        }
+
+        const ROUND_TIMES = [0, 60, 90, 120, 150, 180, 210, 240, 270, 300, 480]; 
+        const TOTAL_ROUNDS = 10;
+        const SAVE_KEY = 'cruzadaMitica_saveData';
+        const ITEMS_REQUIRED = [0, 26, 29, 32, 36, 40, 44, 48, 52, 56, 31];
+
+        let gameConfig = {
+            baseScrollSpeed: 2.5,
+            baseEnemySpawnRate: 1400,
+            round: 1,
+            checkpointRound: 1, 
+            timeRemaining: 60,
+            lastSecondTime: 0,
+            bossActive: false,
+            shadowBossActive: false,
+            globalTime: 0,
+            requiredItems: 20,
+            collectedItems: 0,
+            isSecretLevel: false
+        };
+
+        // --- SISTEMA DE FRAGMENTOS (NIVEL SECRETO) ---
+        let secretFragments = { Piedra: false, Niebla: false, Corona: false };
+        let activeSecretFragments = [];
+        let realExitPortal = { active: false, x: 0, y: 0, spawned: false };
+        let lastFragmentSpawn = 0;
+
+        class SecretFragment {
+            constructor(type, x, y) {
+                this.type = type; 
+                this.x = x;
+                this.y = y;
+                this.baseRadius = 15;
+                this.pulse = 0;
+            }
+            get radius() { return this.baseRadius * gameScale; }
+            update() {
+                this.y += getScrollSpeed() * 0.8; 
+                this.pulse += 0.1;
+                return this.y <= canvas.height + 50 * gameScale;
+            }
+            draw(ctx) {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.scale(gameScale, gameScale);
+                let glow = 15 + Math.sin(this.pulse) * 5;
+                ctx.shadowBlur = glow;
+                
+                let colorMain = '#fff';
+                if (this.type === 'Piedra') { ctx.shadowColor = '#aaaaaa'; colorMain = '#666666'; }
+                else if (this.type === 'Niebla') { ctx.shadowColor = '#39ff14'; colorMain = '#115511'; }
+                else if (this.type === 'Corona') { ctx.shadowColor = '#ffd700'; colorMain = '#cc8800'; }
+
+                ctx.fillStyle = colorMain;
+                ctx.beginPath();
+                ctx.moveTo(0, -12); ctx.lineTo(8, 0); ctx.lineTo(4, 12); ctx.lineTo(-4, 12); ctx.lineTo(-8, 0);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.strokeStyle = ctx.shadowColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        function getScrollSpeed() {
+            return gameConfig.baseScrollSpeed * gameScale;
+        }
+
+        let portal = { active: false, x: 0, y: 0, timer: 0, spawned: false };
+        let shadowBoss = null;
+
+        let activeEffects = {
+            speedMultiplier: 1.0, speedTimer: 0,
+            shieldActive: false, shieldTimer: 0,
+            freezeMultiplier: 1.0, freezeTimer: 0,
+            bossStunned: false, bossStunTimer: 0
+        };
+
+        const keys = { up: false, down: false, left: false, right: false, w: false, s: false, a: false, d: false };
+
+        const joystickZone = document.getElementById('joystickZone');
+        const joystickKnob = document.getElementById('joystickKnob');
+        let virtualJoystick = { active: false, x: 0, y: 0 };
+        let joyCenter = { x: 0, y: 0 };
+        let joystickRadius = 65; 
+        
+        function setupJoystick() {
+            if (!isTouchDevice) return;
+            
+            const updateCenter = () => {
+                const rect = joystickZone.getBoundingClientRect();
+                joyCenter.x = rect.left + rect.width / 2;
+                joyCenter.y = rect.top + rect.height / 2;
+                joystickRadius = rect.width / 2;
+            };
+
+            joystickZone.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                updateCenter();
+                virtualJoystick.active = true;
+                handleJoyMove(e);
+            }, {passive: false});
+
+            joystickZone.addEventListener('touchmove', handleJoyMove, {passive: false});
+            
+            const endJoy = (e) => {
+                e.preventDefault();
+                virtualJoystick.active = false;
+                virtualJoystick.x = 0; virtualJoystick.y = 0;
+                joystickKnob.style.transform = `translate(-50%, -50%)`;
+            };
+            
+            joystickZone.addEventListener('touchend', endJoy);
+            joystickZone.addEventListener('touchcancel', endJoy);
+        }
+
+        function handleJoyMove(e) {
+            if (!virtualJoystick.active) return;
+            e.preventDefault();
+            const touch = e.targetTouches[0];
+            let dx = touch.clientX - joyCenter.x;
+            let dy = touch.clientY - joyCenter.y;
+            
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > joystickRadius) {
+                dx = (dx / distance) * joystickRadius;
+                dy = (dy / distance) * joystickRadius;
+            }
+
+            joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            
+            let normX = dx / joystickRadius;
+            let normY = dy / joystickRadius;
+            
+            virtualJoystick.x = normX * Math.abs(normX);
+            virtualJoystick.y = normY * Math.abs(normY);
+        }
+
+        setupJoystick();
+
+        window.addEventListener('keydown', (e) => { 
+            let code = e.code;
+            let key = e.key ? e.key.toLowerCase() : '';
+            
+            if (code === 'KeyW' || key === 'w') keys.w = true;
+            if (code === 'KeyS' || key === 's') keys.s = true;
+            if (code === 'KeyA' || key === 'a') keys.a = true;
+            if (code === 'KeyD' || key === 'd') keys.d = true;
+            
+            if (code === 'ArrowUp' || key === 'arrowup') keys.up = true;
+            if (code === 'ArrowDown' || key === 'arrowdown') keys.down = true;
+            if (code === 'ArrowLeft' || key === 'arrowleft') keys.left = true;
+            if (code === 'ArrowRight' || key === 'arrowright') keys.right = true;
+            
+            if (key === 'p' || code === 'Escape') togglePause();
+        });
+
+        window.addEventListener('keyup', (e) => { 
+            let code = e.code;
+            let key = e.key ? e.key.toLowerCase() : '';
+            
+            if (code === 'KeyW' || key === 'w') keys.w = false;
+            if (code === 'KeyS' || key === 's') keys.s = false;
+            if (code === 'KeyA' || key === 'a') keys.a = false;
+            if (code === 'KeyD' || key === 'd') keys.d = false;
+            
+            if (code === 'ArrowUp' || key === 'arrowup') keys.up = false;
+            if (code === 'ArrowDown' || key === 'arrowdown') keys.down = false;
+            if (code === 'ArrowLeft' || key === 'arrowleft') keys.left = false;
+            if (code === 'ArrowRight' || key === 'arrowright') keys.right = false;
+        });
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            updateScale();
+            if (players && players.length > 0) {
+                players.forEach(p => {
+                    if (p.y > canvas.height) p.y = canvas.height - (100 * gameScale);
+                    if (p.x > canvas.width) p.x = canvas.width - (50 * gameScale);
+                });
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+        updateScale();
+        resizeCanvas();
+
+        function loadSaveData() {
+            try {
+                const saved = localStorage.getItem(SAVE_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    let minRound = isTouchDevice ? 2 : 3;
+                    if (data && data.checkpointRound && data.checkpointRound >= minRound) return data.checkpointRound;
+                }
+            } catch (e) {} return 1;
+        }
+
+        function saveGameProgress(roundToSave) {
+            let minRound = isTouchDevice ? 2 : 3;
+            if (roundToSave >= minRound) {
+                const data = { checkpointRound: roundToSave, date: new Date().toISOString() };
+                localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+                
+                checkpointIndicator.classList.remove('hidden');
+                checkpointIndicator.innerText = "¡Guardado!";
+                setTimeout(() => { if(isPlaying) checkpointIndicator.innerText = `Checkpoint: Oleada ${roundToSave}`; }, 3000);
+            }
+        }
+
+        function clearSaveData() { localStorage.removeItem(SAVE_KEY); }
+
+        function loadShopAndCoins() {
+            try {
+                const savedCoins = localStorage.getItem('cruzadaMitica_coins');
+                if (savedCoins !== null) coins = parseInt(savedCoins, 10);
+
+                const savedUpgrades = localStorage.getItem('cruzadaMitica_upgrades');
+                if (savedUpgrades !== null) {
+                    let parsed = JSON.parse(savedUpgrades);
+                    upgrades = { ...upgrades, ...parsed };
+                    if(upgrades.magnet === undefined) upgrades.magnet = 0;
+                    if(upgrades.armor === undefined) upgrades.armor = 0;
+                }
+                
+                const skinSaved = localStorage.getItem('cruzadaMitica_darkSkin');
+                if (skinSaved !== null) darkSkinUnlocked = (skinSaved === 'true');
+                
+            } catch (e) {}
+            updateLobbyCoins();
+        }
+
+        function saveShopAndCoins() {
+            try {
+                localStorage.setItem('cruzadaMitica_coins', coins);
+                localStorage.setItem('cruzadaMitica_upgrades', JSON.stringify(upgrades));
+                localStorage.setItem('cruzadaMitica_darkSkin', darkSkinUnlocked);
+            } catch (e) {}
+            updateLobbyCoins();
+        }
+
+        function updateLobbyCoins() {
+            document.getElementById('lobbyCoinCount').innerText = coins;
+            document.getElementById('shopCoinCount').innerText = coins;
+        }
+
+        function updateShopUI() {
+            updateLobbyCoins();
+            for (let up in upgrades) {
+                let currentLevel = upgrades[up];
+                let maxLevel = UPGRADE_LIMITS[up];
+                document.getElementById(`lvl${up.charAt(0).toUpperCase() + up.slice(1)}`).innerText = `${currentLevel}/${maxLevel}`;
+                
+                let btn = document.getElementById(`btnBuy${up.charAt(0).toUpperCase() + up.slice(1)}`);
+                let costSpan = document.getElementById(`cost${up.charAt(0).toUpperCase() + up.slice(1)}`);
+                
+                if (currentLevel >= maxLevel) {
+                    costSpan.innerText = "MÁX";
+                    btn.classList.add('opacity-50', 'pointer-events-none');
+                } else {
+                    let cost = UPGRADE_COSTS[up][currentLevel];
+                    costSpan.innerText = cost;
+                    if (coins >= cost) {
+                        btn.classList.remove('opacity-50', 'pointer-events-none');
+                    } else {
+                        btn.classList.add('opacity-50');
+                    }
+                }
+            }
+        }
+
+        function buyUpgrade(type) {
+            let currentLevel = upgrades[type];
+            let maxLevel = UPGRADE_LIMITS[type];
+            if (currentLevel >= maxLevel) return;
+
+            let cost = UPGRADE_COSTS[type][currentLevel];
+            if (coins >= cost) {
+                coins -= cost;
+                upgrades[type]++;
+                saveShopAndCoins();
+                updateShopUI();
+            }
+        }
+
+        function initMenu() {
+            loadShopAndCoins();
+            if (isTouchDevice) {
+                controlsText.innerHTML = 'Usa el <strong class="text-yellow-500">Joystick</strong> para moverte.<br>¡Sobrevive y recoge las reliquias!';
+            } else {
+                controlsText.innerHTML = 'J1: Mueve con <strong class="text-yellow-500">W, A, S, D</strong><br>J2: Mueve con <strong class="text-yellow-500">Flechas</strong><br>¡Esquiva y sobrevive!';
+            }
+
+            let savedCheckpoint = loadSaveData();
+            let minRound = isTouchDevice ? 2 : 3;
+            if (savedCheckpoint >= minRound) {
+                btnOpenCheckpoint.classList.remove('hidden');
+                saveInfoBadge.innerText = `Máx: Oleada ${savedCheckpoint}`;
+                gameConfig.checkpointRound = savedCheckpoint; 
+            } else {
+                btnOpenCheckpoint.classList.add('hidden');
+            }
+            
+            if (darkSkinUnlocked) {
+                document.getElementById('skinIndicator').classList.remove('hidden');
+            }
+        }
+
+        initMenu();
+
+        function togglePause() {
+            if (!isPlaying) return; 
+            isPaused = !isPaused;
+            if (isPaused) {
+                pauseStartTime = performance.now();
+                pauseScreen.classList.remove('hidden');
+                cancelAnimationFrame(animationId);
+            } else {
+                let pauseDuration = performance.now() - pauseStartTime;
+                gameConfig.lastSecondTime += pauseDuration;
+                lastEnemySpawn += pauseDuration; lastPowerUpSpawn += pauseDuration; lastItemSpawn += pauseDuration; lastObstacleSpawn += pauseDuration;
+                if(portal.active) portal.timer += pauseDuration;
+                
+                if(activeEffects.speedTimer > 0) activeEffects.speedTimer += pauseDuration;
+                if(activeEffects.shieldTimer > 0) activeEffects.shieldTimer += pauseDuration;
+                if(activeEffects.freezeTimer > 0) activeEffects.freezeTimer += pauseDuration;
+                if(activeEffects.bossStunTimer > 0) activeEffects.bossStunTimer += pauseDuration;
+                if(lastFragmentSpawn > 0) lastFragmentSpawn += pauseDuration;
+                if(lastMessageSpawn > 0) lastMessageSpawn += pauseDuration;
+
+                if (boss) boss.lastAttack += pauseDuration;
+                enemies.forEach(e => { e.lastShot += pauseDuration; });
+                
+                players.forEach(p => {
+                    if (p.fogDebuffTimer > 0) p.fogDebuffTimer += pauseDuration;
+                });
+
+                keys.w = false; keys.s = false; keys.a = false; keys.d = false;
+                keys.up = false; keys.down = false; keys.left = false; keys.right = false;
+                virtualJoystick.active = false; virtualJoystick.x = 0; virtualJoystick.y = 0;
+                if (joystickKnob) joystickKnob.style.transform = `translate(-50%, -50%)`;
+
+                pauseScreen.classList.add('hidden');
+                animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function getTransitionText(round) {
+            let mapName = "El Puente del Calabozo";
+            let subText = "";
+            let titleColor = "#d4af37";
+
+            if (round === 2) { subText = "¡Cuidado: Orcos Berserkers!"; }
+            if (round === 3 || round === 4) { mapName = "El Bosque Maldito"; titleColor = "#4ade80"; } 
+            if (round === 4) { subText = "¡Cuidado: Arqueros Esqueleto!"; }
+            if (round === 5 || round === 6) { mapName = "La Fortaleza Helada"; titleColor = "#93c5fd"; } 
+            if (round === 6) { subText = "¡Cuidado: Sacerdotes Corruptos!"; }
+            if (round === 7 || round === 8) { mapName = "Profundidades Volcánicas"; titleColor = "#f97316"; } 
+            if (round === 7) { subText = "¡Aparecen Bendiciones!"; }
+            if (round === 8) { subText = "¡Cuidado: Caballeros Caídos!"; }
+            if (round === 9) { mapName = "Las Puertas del Rey"; titleColor = "#ef4444"; } 
+
+            return { mapName, subText, titleColor };
+        }
+
+        function showRoundTitle(text, subtext, color = '#d4af37') {
+            let rText = document.createElement('div');
+            rText.innerHTML = `<span style="text-shadow: 2px 2px 5px black">${text}</span><br><span class="text-xl md:text-3xl text-gray-300" style="text-shadow: 2px 2px 5px black">${subtext}</span>`;
+            rText.className = `absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center z-40 pointer-events-none transition-opacity duration-1000 font-['Cinzel'] font-black w-full text-3xl md:text-7xl px-2`;
+            rText.style.color = color;
+            document.body.appendChild(rText);
+            
+            setTimeout(() => { 
+                rText.style.opacity = 0; 
+                setTimeout(()=> rText.remove(), 1000); 
+            }, 3000);
+        }
+
+        class PowerUp {
+            constructor(type, x, y) { 
+                this.type = type; this.x = x; this.y = y; 
+                this.baseRadius = 16; 
+                this.baseSpeedY = 1.5; 
+                this.rotation = 0; 
+            }
+            get radius() { return this.baseRadius * gameScale; }
+            update() { this.y += this.baseSpeedY * gameScale; this.rotation += 0.05; return this.y <= canvas.height + 50 * gameScale; }
+            draw(ctx) {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.scale(gameScale, gameScale); ctx.rotate(this.rotation);
+                ctx.beginPath(); ctx.arc(0, 0, this.baseRadius, 0, Math.PI*2); ctx.lineWidth = 3;
+                switch(this.type) {
+                    case 'health':
+                        ctx.shadowBlur = 15; ctx.shadowColor = '#ff0044'; ctx.fillStyle = 'rgba(255, 0, 68, 0.2)'; ctx.fill(); ctx.strokeStyle = '#ff0044'; ctx.stroke();
+                        ctx.fillStyle = '#ffb3c6'; ctx.rotate(-this.rotation); ctx.fillRect(-3, -8, 6, 16); ctx.fillRect(-8, -3, 16, 6); break;
+                    case 'speed':
+                        ctx.shadowBlur = 15; ctx.shadowColor = '#ffff00'; ctx.fillStyle = 'rgba(255, 255, 0, 0.2)'; ctx.fill(); ctx.strokeStyle = '#ffff00'; ctx.stroke();
+                        ctx.fillStyle = '#fff'; ctx.rotate(-this.rotation); ctx.beginPath(); ctx.moveTo(2, -10); ctx.lineTo(-4, 2); ctx.lineTo(2, 2); ctx.lineTo(-2, 10); ctx.lineTo(6, -2); ctx.lineTo(0, -2); ctx.fill(); break;
+                    case 'shield':
+                        ctx.shadowBlur = 15; ctx.shadowColor = '#d4af37'; ctx.fillStyle = 'rgba(212, 175, 55, 0.2)'; ctx.fill(); ctx.strokeStyle = '#d4af37'; ctx.stroke();
+                        ctx.fillStyle = '#fff'; ctx.rotate(-this.rotation); ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(6, -4); ctx.lineTo(6, 4); ctx.lineTo(0, 10); ctx.lineTo(-6, 4); ctx.lineTo(-6, -4); ctx.fill(); break;
+                    case 'freeze':
+                        ctx.shadowBlur = 15; ctx.shadowColor = '#00ffff'; ctx.fillStyle = 'rgba(0, 255, 255, 0.2)'; ctx.fill(); ctx.strokeStyle = '#00ffff'; ctx.stroke();
+                        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.rotate(-this.rotation); ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(0, 8); ctx.moveTo(-6, -4); ctx.lineTo(6, 4); ctx.moveTo(-6, 4); ctx.lineTo(6, -4); ctx.stroke(); break;
+                    case 'bomb':
+                        ctx.shadowBlur = 20; ctx.shadowColor = '#ff6600'; ctx.fillStyle = 'rgba(255, 102, 0, 0.3)'; ctx.fill(); ctx.strokeStyle = '#ff6600'; ctx.stroke();
+                        ctx.fillStyle = '#fff'; ctx.rotate(-this.rotation); ctx.beginPath(); ctx.arc(0, 2, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(-3, -6); ctx.lineTo(3, -6); ctx.fill(); break;
+                    case 'holy_sword': 
+                        ctx.shadowBlur = 30; ctx.shadowColor = '#ffffff'; ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.stroke();
+                        ctx.fillStyle = '#fff'; ctx.rotate(-this.rotation); ctx.fillRect(-2, -10, 4, 16); ctx.fillRect(-5, 4, 10, 3); break;
+                }
+                ctx.restore();
+            }
+        }
+
+        class CollectibleItem {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.baseRadius = 12;
+                this.pulse = 0;
+            }
+            get radius() { return this.baseRadius * gameScale; }
+            update() {
+                this.y += getScrollSpeed() + (0.8 * gameScale);
+                this.pulse += 0.1;
+                return this.y <= canvas.height + 50 * gameScale;
+            }
+            draw(ctx) {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.scale(gameScale, gameScale);
+                let glow = 10 + Math.sin(this.pulse) * 5;
+                let round = gameConfig.round;
+                
+                if (round <= 3) {
+                    ctx.shadowBlur = glow; ctx.shadowColor = '#ffd700';
+                    ctx.fillStyle = '#ffd700'; ctx.strokeStyle = '#b59300'; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.arc(0, -4, 8, Math.PI, 0, false); ctx.lineTo(8, -8); ctx.lineTo(-8, -8); ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.fillRect(-2, -4, 4, 10); ctx.strokeRect(-2, -4, 4, 10);
+                    ctx.beginPath(); ctx.moveTo(-6, 6); ctx.lineTo(6, 6); ctx.lineTo(4, 9); ctx.lineTo(-4, 9); ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#00ffff'; ctx.shadowColor = '#00ffff';
+                    ctx.beginPath(); ctx.arc(0, -4, 2.5, 0, Math.PI * 2); ctx.fill();
+                } 
+                else if (round <= 6) {
+                    ctx.shadowBlur = glow + 5; ctx.shadowColor = '#00ffcc';
+                    ctx.fillStyle = '#a0a0a0'; ctx.strokeStyle = '#606060'; ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.moveTo(-6, 4); ctx.lineTo(6, 4); ctx.lineTo(8, 8); ctx.lineTo(-8, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.fillRect(-3, 0, 6, 4);
+                    ctx.fillStyle = '#ccffff';
+                    ctx.beginPath(); ctx.arc(0, -5, 7, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(-2, -7, 2.5, 0, Math.PI * 2); ctx.fill();
+                }
+                else if (round <= 9) {
+                    ctx.shadowBlur = glow; ctx.shadowColor = '#ff5500';
+                    ctx.fillStyle = '#ffcc00'; ctx.strokeStyle = '#aa7700'; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(-10, -3); ctx.lineTo(-5, 5); ctx.lineTo(0, -6); ctx.lineTo(5, 5); ctx.lineTo(10, -3); ctx.lineTo(7, 8); ctx.lineTo(-7, 8);
+                    ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#ff0000'; ctx.shadowColor = '#ff0000'; ctx.shadowBlur = glow + 5;
+                    ctx.beginPath(); ctx.arc(0, 4, 2.5, 0, Math.PI*2); ctx.fill();
+                }
+                else {
+                    ctx.shadowBlur = glow + 15; ctx.shadowColor = '#ffffff';
+                    ctx.fillStyle = '#e5f2ff'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(7, 0); ctx.lineTo(0, 12); ctx.lineTo(-7, 0);
+                    ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(3, 0); ctx.lineTo(0, 6); ctx.lineTo(-3, 0);
+                    ctx.closePath(); ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        class Player {
+            constructor(id) {
+                this.id = id;
+                this.baseWidth = 30; this.baseHeight = 40; 
+                this.x = canvas.width / 2 + (id === 1 ? -40 * gameScale : 40 * gameScale); 
+                this.y = canvas.height / 2; 
+                this.dead = false;
+                this.damageFlashTimer = 0; 
+                this.fogDebuffTimer = 0;
+                
+                let speedBonus = upgrades.speed * 0.5; 
+                let baseSpd = isTouchDevice ? 4.8 : 5.5; 
+                this.baseSpeed = baseSpd + speedBonus; 
+                
+                this.maxHealth = 1000 + (upgrades.maxHealth * 100); 
+                this.health = this.maxHealth;
+            }
+            get width() { return this.baseWidth * gameScale; }
+            get height() { return this.baseHeight * gameScale; }
+            
+            update(dt) {
+                if (this.dead) return;
+                
+                if (this.damageFlashTimer > 0) this.damageFlashTimer--;
+                
+                let secretFogOffset = gameConfig.isSecretLevel ? 70 * gameScale : 0;
+                const deathZoneY = canvas.height - (50 * gameScale) - secretFogOffset; 
+                let inFog = this.y > deathZoneY - 30 * gameScale;
+                
+                if (inFog) {
+                    this.fogDebuffTimer = dt + 1000;
+                    if (gameConfig.isSecretLevel && dt % 40 < 2) { 
+                        if (!activeEffects.shieldActive) {
+                            this.health -= isTouchDevice ? 1 : 2; 
+                            if (Math.random() < 0.1) this.damageFlashTimer = 5;
+                        }
+                    }
+                }
+                
+                let isFogDebuffed = dt < this.fogDebuffTimer;
+                
+                let isMovingUp = false; 
+                let currentSpeed = this.baseSpeed * gameScale * activeEffects.speedMultiplier;
+                
+                if (isFogDebuffed) {
+                    currentSpeed *= 0.4;
+                }
+                
+                if (this.id === 1) {
+                    if (keys.w) { this.y -= currentSpeed; isMovingUp = true; }
+                    if (keys.s) { this.y += currentSpeed; }
+                    if (keys.a) { this.x -= currentSpeed; }
+                    if (keys.d) { this.x += currentSpeed; }
+
+                    if (virtualJoystick.active) {
+                        this.x += virtualJoystick.x * currentSpeed;
+                        this.y += virtualJoystick.y * currentSpeed;
+                        if (virtualJoystick.y < -0.3) isMovingUp = true; 
+                    }
+                } else {
+                    if (keys.up) { this.y -= currentSpeed; isMovingUp = true; }
+                    if (keys.down) { this.y += currentSpeed; }
+                    if (keys.left) { this.x -= currentSpeed; }
+                    if (keys.right) { this.x += currentSpeed; }
+                }
+
+                if (!isMovingUp) this.y += getScrollSpeed();
+
+                if (this.x < 20 * gameScale) this.x = 20 * gameScale;
+                if (this.x > canvas.width - 20 * gameScale) this.x = canvas.width - 20 * gameScale;
+                if (this.y < this.height) this.y = this.height;
+
+                if (this.y > deathZoneY) {
+                    if(!activeEffects.shieldActive) {
+                        this.health -= isTouchDevice ? 8 : 12;
+                        if (Math.random() < 0.15) this.damageFlashTimer = 8;
+                    }
+                    this.y = deathZoneY;
+                }
+                
+                if (activeEffects.speedMultiplier > 1 && (isMovingUp || (this.id === 1 ? virtualJoystick.active : keys.ArrowDown))) {
+                    if (Math.random() > 0.5) particles.push(new Particle(this.x, this.y, this.id===1?'#ffff00':'#00aaff', false, 0.5));
+                }
+
+                if (this.health <= 0) this.dead = true;
+            }
+            takeDamage(amount) {
+                if (activeEffects.shieldActive) return;
+                let armorReduction = 1 - (upgrades.armor * 0.05); 
+                let finalDamage = isTouchDevice ? Math.floor(amount * 0.65 * armorReduction) : Math.floor(amount * armorReduction);
+                this.health -= finalDamage;
+                this.damageFlashTimer = 15; 
+                triggerScreenShake(4); 
+                createExplosion(this.x, this.y, this.id === 1 ? '#cc0000' : '#880000', 12, true);
+            }
+            draw(ctx) {
+                if (this.dead) return;
+                ctx.save(); ctx.translate(this.x, this.y); ctx.scale(gameScale, gameScale);
+                
+                let isFlashing = this.damageFlashTimer > 0;
+                let isDark = darkSkinUnlocked; 
+
+                if (activeEffects.shieldActive) {
+                    ctx.shadowBlur = 20; ctx.shadowColor = '#d4af37'; ctx.fillStyle = 'rgba(212, 175, 55, 0.3)'; ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+                } else { 
+                    ctx.shadowBlur = isFlashing ? 15 : 5; 
+                    ctx.shadowColor = isFlashing ? '#ff0000' : 'rgba(0,0,0,0.5)'; 
+                }
+
+                let colorCape = isFlashing ? '#ff5555' : (this.id === 1 ? (isDark ? '#2b00ff' : '#8b0000') : '#1a1a5a');
+                let colorArmor = isFlashing ? '#aa1111' : (this.id === 1 ? (isDark ? '#220033' : '#9a9a9a') : '#2e2e2e');
+                let colorTrim = isFlashing ? '#ffffff' : (this.id === 1 ? (isDark ? '#aa00ff' : '#d4af37') : '#4facfe');
+                let colorHelmet = isFlashing ? '#ee2222' : (this.id === 1 ? (isDark ? '#110022' : '#b0b0b0') : '#3c3c3c');
+                let colorPlume = isFlashing ? '#ffffff' : (this.id === 1 ? (isDark ? '#aa00ff' : '#cc0000') : '#00aaff');
+
+                ctx.fillStyle = colorCape;
+                ctx.beginPath();
+                let capeSway = Math.sin(gameConfig.globalTime * 0.005 + this.x * 0.05) * 5;
+                ctx.moveTo(-10, -10);
+                ctx.lineTo(10, -10);
+                ctx.lineTo(14 + capeSway, 22);
+                ctx.lineTo(-14 + capeSway, 22);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = isFlashing ? '#cc0000' : '#111';
+                ctx.fillRect(-8, 15, 6, 12);
+                ctx.fillRect(2, 15, 6, 12);
+
+                ctx.fillStyle = colorArmor;
+                ctx.strokeStyle = isFlashing ? '#ff0000' : '#111';
+                ctx.lineWidth = 2;
+                ctx.fillRect(-12, -10, 24, 25);
+                ctx.strokeRect(-12, -10, 24, 25);
+
+                ctx.fillStyle = colorTrim;
+                ctx.fillRect(-12, 10, 24, 4);
+
+                ctx.fillStyle = colorHelmet;
+                ctx.beginPath(); ctx.arc(-13, -8, 6, Math.PI, 0); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.arc(13, -8, 6, Math.PI, 0); ctx.fill(); ctx.stroke();
+
+                ctx.fillStyle = isFlashing ? '#ff3333' : (this.id === 1 ? (isDark ? '#330044' : '#808080') : '#1e1e1e');
+                ctx.beginPath(); ctx.arc(0, -16, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+                ctx.fillStyle = isFlashing ? '#ffffff' : (isDark && this.id === 1 ? '#ff00ff' : '#0a0a0c');
+                if (isDark && this.id === 1) ctx.shadowBlur = 10; ctx.shadowColor = '#ff00ff';
+                ctx.fillRect(-3, -24, 6, 10); 
+                ctx.fillRect(-8, -21, 16, 4); 
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = colorPlume;
+                ctx.beginPath();
+                ctx.moveTo(0, -27);
+                ctx.quadraticCurveTo(-8, -35, -12, -30);
+                ctx.quadraticCurveTo(-5, -25, 0, -27);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class Boss {
+            constructor() {
+                this.baseWidth = 120; this.baseHeight = 120; 
+                this.x = canvas.width / 2; this.y = -150 * gameScale; 
+                this.baseTargetY = 120; this.lastAttack = 0; this.attackPhase = 0; this.hoverOffset = 0;
+                this.auraRot = 0; 
+            }
+            get targetY() { return this.baseTargetY * gameScale; }
+            get width() { return this.baseWidth * gameScale; }
+            get height() { return this.baseHeight * gameScale; }
+            get hitRadius() { return 40 * gameScale; }
+
+            update(dt, alivePlayers, projectiles) {
+                if (this.y < this.targetY) this.y += 1.5 * gameScale;
+                this.hoverOffset += 0.03; this.x = (canvas.width / 2) + Math.sin(dt * 0.0006) * (canvas.width * 0.3) + Math.cos(dt * 0.001) * 30 * gameScale;
+                let currentY = this.y + Math.cos(this.hoverOffset) * 15 * gameScale;
+
+                let bossCooldown = isTouchDevice ? 1300 : 900;
+
+                if (!activeEffects.bossStunned && this.y >= this.targetY && dt - this.lastAttack > (bossCooldown / activeEffects.freezeMultiplier)) { 
+                    this.attackPhase = (this.attackPhase + 1) % 3;
+                    if (this.attackPhase === 0) this.shootHellfire(currentY, projectiles);
+                    else if (this.attackPhase === 1) {
+                        if (alivePlayers.length > 0) {
+                            let targetPlayer = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+                            this.shootTargeted(currentY, targetPlayer, projectiles);
+                        }
+                    }
+                    else this.shootMeteorRain(currentY, projectiles);
+                    this.lastAttack = dt;
+                }
+                this.draw(ctx, currentY);
+            }
+            shootHellfire(currentY, projectiles) {
+                triggerScreenShake(8); 
+                let speed = isTouchDevice ? 4.5 : 6;
+                for(let i = -5; i <= 5; i++) { let angle = Math.PI/2 + (i * 0.2); projectiles.push(new Projectile(this.x, currentY + 40 * gameScale, Math.cos(angle)*speed, Math.sin(angle)*speed, 'boss_fire')); }
+            }
+            shootTargeted(currentY, player, projectiles) {
+                triggerScreenShake(10); 
+                const dx = player.x - this.x; const dy = player.y - currentY; const angle = Math.atan2(dy, dx);
+                let speed = isTouchDevice ? 9 : 12;
+                for(let i = -2; i <= 2; i++) { let offsetAngle = angle + (i * 0.15); projectiles.push(new Projectile(this.x, currentY + 40 * gameScale, Math.cos(offsetAngle)*speed, Math.sin(offsetAngle)*speed, 'boss_magic')); }
+            }
+            shootMeteorRain(currentY, projectiles) {
+                triggerScreenShake(15); 
+                let speedDown = isTouchDevice ? 5.5 : 7;
+                for(let i = -4; i <= 4; i++) { let pX = this.x + (i * 60 * gameScale); projectiles.push(new Projectile(pX, currentY + 20 * gameScale, (Math.random()-0.5)*2, speedDown + Math.random()*3, 'boss_fire')); }
+            }
+            draw(ctx, currentY) {
+                ctx.save(); ctx.translate(this.x, currentY); ctx.scale(gameScale, gameScale);
+                this.auraRot += 0.01;
+                ctx.save();
+                ctx.rotate(this.auraRot);
+                ctx.shadowBlur = 30;
+                ctx.shadowColor = activeEffects.bossStunned ? '#fff' : '#ff0000';
+                ctx.strokeStyle = activeEffects.bossStunned ? 'rgba(255,255,255,0.6)' : 'rgba(255, 0, 0, 0.6)';
+                ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.arc(0, 0, 110, 0, Math.PI*2); ctx.stroke();
+                ctx.beginPath();
+                for(let i=0; i<=5; i++) {
+                    let a = i * Math.PI * 0.8;
+                    ctx[i===0?'moveTo':'lineTo'](Math.cos(a)*110, Math.sin(a)*110);
+                }
+                ctx.stroke();
+                ctx.rotate(-this.auraRot * 2.5);
+                ctx.setLineDash([15, 15]);
+                ctx.beginPath(); ctx.arc(0, 0, 85, 0, Math.PI*2); ctx.stroke();
+                ctx.restore();
+
+                if(Math.random() < 0.6 && !activeEffects.bossStunned) {
+                    particles.push(new Particle(this.x + (Math.random()-0.5)*150*gameScale, currentY + (Math.random()-0.5)*150*gameScale, '#ff3300', false, 1.2));
+                    particles.push(new Particle(this.x + (Math.random()-0.5)*100*gameScale, currentY + (Math.random()-0.5)*100*gameScale, '#8b0000', false, 1.5));
+                }
+
+                if (activeEffects.bossStunned) { ctx.shadowBlur = 30; ctx.shadowColor = '#ffffff'; ctx.globalAlpha = 0.8; } else { ctx.shadowBlur = 50; ctx.shadowColor = '#ff0000'; }
+
+                ctx.fillStyle = '#1a0d00';
+                ctx.beginPath(); ctx.moveTo(-30, -30); ctx.quadraticCurveTo(-70, -80, -90, -40); ctx.quadraticCurveTo(-60, -10, -40, 0); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(30, -30); ctx.quadraticCurveTo(70, -80, 90, -40); ctx.quadraticCurveTo(60, -10, 40, 0); ctx.fill();
+                ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(-20, 15, 40, 35);
+
+                ctx.fillStyle = activeEffects.bossStunned ? '#fff' : '#ff1100';
+                ctx.shadowBlur = 20; ctx.shadowColor = activeEffects.bossStunned ? '#fff' : '#ff5500';
+                ctx.beginPath(); ctx.moveTo(-20, -10); ctx.lineTo(-8, 5); ctx.lineTo(-28, 10); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(20, -10); ctx.lineTo(8, 5); ctx.lineTo(28, 10); ctx.fill();
+
+                if (!activeEffects.bossStunned) {
+                    ctx.fillStyle = '#ffaa00'; ctx.fillRect(-15, 25, 30, 8);
+                    for(let i=-10; i<=10; i+=8) { ctx.fillStyle = '#111'; ctx.beginPath(); ctx.moveTo(i, 25); ctx.lineTo(i-2, 33); ctx.lineTo(i+2, 33); ctx.fill(); }
+                }
+                ctx.restore();
+            }
+        }
+
+        class Enemy {
+            constructor(side, availableTypes) {
+                this.side = side; this.baseWidth = 30; this.baseHeight = 30;
+                this.y = Math.random() * (canvas.height - 300 * gameScale) + 50 * gameScale; 
+                this.x = side === 'left' ? -40 * gameScale : canvas.width + 40 * gameScale;
+                this.type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+                
+                let sMult = 1, cMult = 1;
+                if (this.type === 'skeleton_archer') { sMult = 0.7; cMult = 0.8; } 
+                else if (this.type === 'corrupt_priest') { sMult = 0.5; cMult = 1.5; } 
+                else if (this.type === 'fallen_knight') { sMult = 1.2; cMult = 1.2; }
+                else if (this.type === 'ghost_warrior') { sMult = 0.8; cMult = 1.1; }
+                else if (this.type === 'tentacle_horror') { sMult = 0.9; cMult = 0.6; } 
+
+                let mobileSpeedNerf = isTouchDevice ? 0.75 : 1.0;
+                this.speedFactor = ((Math.random() * 1.5 + 1.5) * (1 + gameConfig.round * 0.15)) * sMult * mobileSpeedNerf;
+                if (this.side === 'right') this.speedFactor *= -1;
+                
+                this.lastShot = 0;
+                let mobileCooldownNerf = isTouchDevice ? 1.3 : 1.0;
+                this.shootCooldown = (Math.random() * 1500 + 800 - (gameConfig.round * 80)) * cMult * mobileCooldownNerf; 
+                if(this.shootCooldown < 400) this.shootCooldown = 400;
+            }
+            get width() { return this.baseWidth * gameScale; }
+            get height() { return this.baseHeight * gameScale; }
+
+            update(dt, alivePlayers, projectiles) {
+                this.x += this.speedFactor * gameScale * activeEffects.freezeMultiplier;
+                this.y += getScrollSpeed() * 0.8 * activeEffects.freezeMultiplier;
+                if (dt - this.lastShot > (this.shootCooldown / activeEffects.freezeMultiplier) && this.y > 0 && this.y < canvas.height - 100 * gameScale) {
+                    if (alivePlayers.length > 0) {
+                        let targetPlayer = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+                        this.shoot(targetPlayer, projectiles); 
+                    }
+                    this.lastShot = dt;
+                }
+                if (this.side === 'left' && this.x > canvas.width + 40 * gameScale) return false;
+                if (this.side === 'right' && this.x < -40 * gameScale) return false;
+                if (this.y > canvas.height + 40 * gameScale) return false;
+                return true;
+            }
+            shoot(player, projectiles) {
+                const dx = player.x - this.x; const dy = player.y - this.y; const angle = Math.atan2(dy, dx);
+                let projSpeed = 4 + (gameConfig.round * 0.6); let projectileType = 'dark_magic';
+                
+                let mobileProjNerf = isTouchDevice ? 0.8 : 1.0;
+
+                if (this.type === 'tentacle_horror') {
+                    projectileType = 'abyssal_spike';
+                    projSpeed *= 1.8 * mobileProjNerf;
+                    for(let i = -1; i <= 1; i++) {
+                        let spread = angle + (i * 0.2);
+                        projectiles.push(new Projectile(this.x, this.y, Math.cos(spread) * projSpeed, Math.sin(spread) * projSpeed, projectileType, player));
+                    }
+                    return;
+                }
+
+                if (this.type === 'berserker') { projectileType = 'axe'; } 
+                else if (this.type === 'skeleton_archer') { projectileType = 'arrow'; projSpeed *= 1.5; } 
+                else if (this.type === 'corrupt_priest') { projectileType = 'fireball'; projSpeed *= 0.6; } 
+                else if (this.type === 'fallen_knight') { projectileType = 'spear'; projSpeed *= 1.2; }
+                
+                projSpeed *= mobileProjNerf;
+                projectiles.push(new Projectile(this.x, this.y, Math.cos(angle) * projSpeed, Math.sin(angle) * projSpeed, projectileType, player));
+            }
+            draw(ctx) {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.scale(gameScale, gameScale);
+                if (activeEffects.freezeMultiplier < 1) { ctx.globalAlpha = 0.6; ctx.fillStyle = 'rgba(0, 255, 255, 0.3)'; ctx.fillRect(-this.baseWidth/2, -this.baseHeight/2, this.baseWidth, this.baseHeight); }
+                
+                if (this.type === 'ghost_warrior') {
+                    let spectralPulse = Math.sin(gameConfig.globalTime * 0.007 + this.x) * 0.15;
+                    ctx.globalAlpha = 0.75 + spectralPulse;
+                    ctx.shadowBlur = 15; ctx.shadowColor = '#00ffff';
+                    let auraGlow = ctx.createRadialGradient(0, -8, 2, 0, -8, 25);
+                    auraGlow.addColorStop(0, 'rgba(0, 229, 255, 0.5)');
+                    auraGlow.addColorStop(1, 'rgba(0, 229, 255, 0)');
+                    ctx.fillStyle = auraGlow;
+                    ctx.beginPath(); ctx.arc(0, -8, 25, 0, Math.PI * 2); ctx.fill();
+
+                    ctx.fillStyle = 'rgba(0, 229, 255, 0.6)';
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 0);
+                    let waveOffset = Math.sin(gameConfig.globalTime * 0.01 + this.x * 0.05) * 6;
+                    ctx.quadraticCurveTo(-12, 12, -4 + waveOffset, 22);
+                    ctx.quadraticCurveTo(4 + waveOffset, 22, 10, 0);
+                    ctx.closePath(); ctx.fill();
+
+                    ctx.fillStyle = '#1e293b';
+                    ctx.beginPath(); ctx.arc(0, -10, 9, 0, Math.PI * 2); ctx.fill(); 
+                    ctx.fillRect(-8, -5, 16, 10); 
+
+                    ctx.fillStyle = '#0a0a0c';
+                    ctx.fillRect(-5, -14, 10, 5); 
+                    ctx.fillStyle = '#00ffff';
+                    ctx.shadowBlur = 8; ctx.shadowColor = '#00ffff';
+                    ctx.beginPath(); ctx.arc(-2.5, -12, 1.5, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(2.5, -12, 1.5, 0, Math.PI * 2); ctx.fill();
+                    ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+
+                } else if (this.type === 'tentacle_horror') {
+                    let t = gameConfig.globalTime * 0.005;
+                    ctx.shadowBlur = 15; ctx.shadowColor = '#4b0082';
+                    
+                    for (let i = 0; i < 6; i++) {
+                        let angle = (Math.PI * 2 / 6) * i + t * 0.5;
+                        let tx = Math.cos(angle) * 20;
+                        let ty = Math.sin(angle) * 20;
+                        let cpx = Math.cos(angle + 0.5) * 35;
+                        let cpy = Math.sin(angle + 0.5) * 35;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.quadraticCurveTo(cpx, cpy, tx + Math.cos(t + i)*15, ty + Math.sin(t + i)*15);
+                        ctx.lineWidth = 4;
+                        ctx.strokeStyle = '#1a0033';
+                        ctx.stroke();
+                    }
+                    
+                    ctx.fillStyle = '#0a0a0a';
+                    ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#ff00ff';
+                    ctx.beginPath(); ctx.arc(-5, -3, 2.5, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(5, -3, 2.5, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(0, 4, 2, 0, Math.PI * 2); ctx.fill(); 
+
+                } else if (this.type === 'berserker') {
+                    ctx.shadowBlur = 5; ctx.shadowColor = '#000'; ctx.fillStyle = '#4b5320'; ctx.fillRect(-12, -12, 24, 24);
+                    ctx.fillStyle = '#444'; ctx.fillRect(-15, -12, 8, 12); ctx.fillRect(7, -12, 8, 12); ctx.fillStyle = '#ff0000'; ctx.fillRect(-6, -4, 3, 3); ctx.fillRect(3, -4, 3, 3);
+                } else if (this.type === 'skeleton_archer') {
+                    ctx.fillStyle = '#e5e5e5'; ctx.beginPath(); ctx.arc(0, -10, 8, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-4, -12, 3, 3); ctx.fillRect(2, -12, 3, 3);
+                    ctx.fillStyle = '#e5e5e5'; ctx.fillRect(-2, -3, 4, 15); ctx.fillRect(-8, 0, 16, 3); ctx.fillRect(-6, 5, 12, 3); ctx.strokeStyle = '#6b4423'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(8, 0, 10, -Math.PI/2, Math.PI/2); ctx.stroke();
+                } else if (this.type === 'corrupt_priest') {
+                    ctx.shadowBlur = 15; ctx.shadowColor = '#ff4500'; ctx.fillStyle = '#8b0000'; ctx.fillRect(-12, -15, 24, 30); ctx.fillStyle = '#ffd700'; ctx.fillRect(-2, -8, 4, 15); ctx.fillRect(-8, -2, 16, 4); 
+                } else if (this.type === 'fallen_knight') {
+                    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-15, -15, 30, 30); ctx.fillStyle = '#333'; ctx.fillRect(-10, -18, 20, 12); ctx.fillStyle = '#ff0000'; ctx.fillRect(-6, -15, 12, 2);
+                }
+                ctx.restore();
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, vx, vy, type, target = null) {
+                this.x = x; this.y = y; this.normVx = vx; this.normVy = vy; this.type = type; this.rotation = 0; this.target = target;
+                if (type.startsWith('boss')) { this.baseRadius = type === 'boss_fire' ? 12 : 10; this.damage = type === 'boss_fire' ? 30 : 25; } 
+                else if (type === 'abyssal_spike') { this.baseRadius = 6; this.damage = 20; }
+                else if (type === 'black_rain') { this.baseRadius = 3; this.damage = 15; }
+                else {
+                    if (type === 'dark_magic') { this.baseRadius = 8; this.damage = 12; } else if (type === 'axe') { this.baseRadius = 12; this.damage = 18; }
+                    else if (type === 'arrow') { this.baseRadius = 4; this.damage = 15; } else if (type === 'fireball') { this.baseRadius = 10; this.damage = 22; }
+                    else if (type === 'spear') { this.baseRadius = 6; this.damage = 25; }
+                }
+                this.angle = Math.atan2(vy, vx);
+            }
+            get radius() { return this.baseRadius * gameScale; }
+            update(dt) {
+                let currentVx = this.normVx * gameScale * activeEffects.freezeMultiplier; 
+                let currentVy = this.normVy * gameScale * activeEffects.freezeMultiplier;
+                
+                if (this.type === 'abyssal_spike' || this.type === 'black_rain') {
+                    currentVx = this.normVx * gameScale;
+                    currentVy = this.normVy * gameScale;
+                }
+
+                if (this.type === 'fireball' && this.target) {
+                    const dx = this.target.x - this.x; const dy = this.target.y - this.y; const targetAngle = Math.atan2(dy, dx);
+                    const turnRate = 0.02 * activeEffects.freezeMultiplier; let angleDiff = targetAngle - this.angle;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2; while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    this.angle += angleDiff * turnRate; const speed = Math.sqrt(this.normVx*this.normVx + this.normVy*this.normVy);
+                    this.normVx = Math.cos(this.angle) * speed; this.normVy = Math.sin(this.angle) * speed;
+                    currentVx = this.normVx * gameScale * activeEffects.freezeMultiplier; currentVy = this.normVy * gameScale * activeEffects.freezeMultiplier;
+                }
+                this.x += currentVx; this.y += currentVy;
+                
+                if (this.type.startsWith('boss_') && Math.random() < 0.6) {
+                    particles.push(new Particle(this.x, this.y, this.type === 'boss_fire' ? '#ff4500' : '#ff0000', false, 0.6));
+                }
+
+                if (this.type === 'axe') this.rotation += 0.3 * activeEffects.freezeMultiplier; 
+                else if (this.type === 'arrow' || this.type === 'spear' || this.type === 'abyssal_spike') this.angle = Math.atan2(this.normVy, this.normVx);
+                
+                if (this.x < -50 * gameScale || this.x > canvas.width + 50 * gameScale || this.y < -50 * gameScale || this.y > canvas.height + 50 * gameScale) return false;
+                return true;
+            }
+            draw(ctx) {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.scale(gameScale, gameScale);
+                if (this.type === 'axe') {
+                    ctx.rotate(this.rotation); ctx.fillStyle = '#6b4423'; ctx.fillRect(-2, -12, 4, 24); ctx.fillStyle = '#aaa'; 
+                    ctx.beginPath(); ctx.moveTo(2, -8); ctx.quadraticCurveTo(15, -12, 15, 0); ctx.quadraticCurveTo(15, 12, 2, 8); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(-2, -8); ctx.quadraticCurveTo(-15, -12, -15, 0); ctx.quadraticCurveTo(-15, 12, -2, 8); ctx.fill();
+                } else if (this.type === 'arrow') {
+                    ctx.rotate(this.angle); ctx.fillStyle = '#8b4513'; ctx.fillRect(-8, -1, 16, 2); ctx.fillStyle = '#a0a0a0'; ctx.beginPath(); ctx.moveTo(8, -2); ctx.lineTo(12, 0); ctx.lineTo(8, 2); ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-12, -3); ctx.lineTo(-10, 0); ctx.fill(); ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-12, 3); ctx.lineTo(-10, 0); ctx.fill();
+                } else if (this.type === 'spear') {
+                    ctx.rotate(this.angle); ctx.fillStyle = '#4a3b22'; ctx.fillRect(-12, -2, 24, 4); ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.moveTo(12, -4); ctx.lineTo(20, 0); ctx.lineTo(12, 4); ctx.fill();
+                } else if (this.type === 'fireball') {
+                    ctx.shadowBlur = 10; ctx.shadowColor = '#ff4500'; ctx.fillStyle = '#ff8c00'; ctx.beginPath(); ctx.arc(0, 0, this.baseRadius, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = 'rgba(255, 69, 0, 0.5)'; ctx.beginPath(); ctx.arc(-this.normVx, -this.normVy, this.baseRadius, 0, Math.PI * 2); ctx.fill();
+                } else if (this.type === 'dark_magic') {
+                    ctx.shadowBlur = 10; ctx.shadowColor = '#00ff00'; ctx.fillStyle = '#ccffcc'; ctx.beginPath(); ctx.arc(0, 0, this.baseRadius, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = 'rgba(0, 255, 0, 0.5)'; ctx.beginPath(); ctx.arc(-this.normVx*1.5, -this.normVy*1.5, this.baseRadius*0.7, 0, Math.PI * 2); ctx.fill();
+                } else if (this.type === 'boss_fire') {
+                    ctx.shadowBlur = 15; ctx.shadowColor = '#ff4500'; ctx.rotate(this.angle + Math.PI/2); ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.arc(0, 0, this.baseRadius, 0, Math.PI); ctx.lineTo(0, -this.baseRadius * 2); ctx.fill();
+                } else if (this.type === 'boss_magic') {
+                    ctx.rotate(this.angle); ctx.shadowBlur = 8; ctx.shadowColor = '#8b0000'; ctx.fillStyle = '#ff3333'; ctx.fillRect(-12, -3, 24, 6); ctx.fillStyle = '#fff'; ctx.fillRect(-8, -1.5, 16, 3);
+                } else if (this.type === 'abyssal_spike') {
+                    ctx.rotate(this.angle); ctx.shadowBlur = 10; ctx.shadowColor = '#4b0082'; ctx.fillStyle = '#2a0040';
+                    ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-6, -4); ctx.lineTo(-4, 0); ctx.lineTo(-6, 4); ctx.fill();
+                    ctx.fillStyle = '#ff00ff'; ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
+                } else if (this.type === 'black_rain') {
+                    ctx.shadowBlur = 5; ctx.shadowColor = '#8b008b'; ctx.fillStyle = '#111';
+                    ctx.fillRect(-1.5, -15, 3, 30);
+                }
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color, isBlood = false, lifeMult = 1.0) {
+                this.x = x; this.y = y; 
+                this.normVx = (Math.random() - 0.5) * 8; 
+                this.normVy = (Math.random() - 0.5) * 8;
+                this.life = 1.0 * lifeMult; this.decay = Math.random() * 0.04 + 0.02; this.color = color; 
+                this.baseSize = Math.random() * 3 + 2; this.isBlood = isBlood;
+            }
+            update() { 
+                this.x += this.normVx * gameScale; 
+                this.y += this.normVy * gameScale; 
+                if(this.isBlood) this.normVy += 0.2; 
+                this.life -= this.decay; return this.life > 0; 
+            }
+            draw(ctx) { 
+                ctx.globalAlpha = Math.max(0, this.life); ctx.fillStyle = this.color; 
+                ctx.fillRect(this.x, this.y, this.baseSize * gameScale, this.baseSize * gameScale); 
+                ctx.globalAlpha = 1.0; 
+            }
+        }
+
+        class Obstacle {
+            constructor() {
+                this.baseWidth = isTouchDevice ? (Math.random() * 40 + 50) : (Math.random() * 60 + 80);
+                this.baseHeight = isTouchDevice ? 40 : 50;
+                this.x = Math.random() * (canvas.width - this.baseWidth * gameScale);
+                this.y = -this.baseHeight * gameScale - 20;
+                this.active = true;
+            }
+            get width() { return this.baseWidth * gameScale; }
+            get height() { return this.baseHeight * gameScale; }
+            update() {
+                this.y += getScrollSpeed();
+                return this.y <= canvas.height + 50 * gameScale;
+            }
+            draw(ctx) {
+                ctx.save(); ctx.translate(this.x, this.y);
+                
+                ctx.fillStyle = '#1e1e24';
+                ctx.strokeStyle = '#0a0a0c';
+                ctx.lineWidth = 2 * gameScale;
+                ctx.fillRect(0, 0, this.width, this.height);
+                ctx.strokeRect(0, 0, this.width, this.height);
+                
+                ctx.fillStyle = '#0a0a0c';
+                ctx.fillRect(this.width * 0.2, this.height * 0.2, this.width * 0.4, 2 * gameScale);
+                ctx.fillRect(this.width * 0.6, this.height * 0.6, this.width * 0.2, 2 * gameScale);
+                
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#8b008b';
+                ctx.strokeStyle = 'rgba(139, 0, 139, 0.5)';
+                ctx.strokeRect(-2*gameScale, -2*gameScale, this.width + 4*gameScale, this.height + 4*gameScale);
+                
+                ctx.restore();
+            }
+        }
+
+        let enemies = []; let projectiles = []; let particles = []; let powerUps = []; let items = []; let obstacles = [];
+        let boss = null;
+        let lastEnemySpawn = 0; let lastPowerUpSpawn = 0; let lastItemSpawn = 0; let fogPhase = 0; let lastObstacleSpawn = 0;
+
+        function getAvailableEnemyTypes(round) {
+            if (gameConfig.isSecretLevel) return ['tentacle_horror']; 
+
+            let types = ['ghost_warrior']; 
+            if (round >= 2) types.push('berserker');
+            if (round >= 4) types.push('skeleton_archer');
+            if (round >= 6) types.push('corrupt_priest');
+            if (round >= 8) types.push('fallen_knight');
+            return types;
+        }
+
+        function createExplosion(x, y, color, count = 10, isBlood = false) { for (let i = 0; i < count; i++) particles.push(new Particle(x, y, color, isBlood)); }
+
+        function drawMedievalBricks(round, scrollOffset) {
+            let baseColor, jointColor, detailColor;
+            
+            if (gameConfig.isSecretLevel) {
+                let pulse = Math.sin(gameConfig.globalTime * 0.002) * 20;
+                baseColor = `rgb(${5 + pulse}, 0, ${10 + pulse})`;
+                jointColor = '#1a0033'; detailColor = '#000000';
+            } else if (round <= 2) {
+                baseColor = '#16161a'; jointColor = '#0e0e11'; detailColor = '#1f1f24'; 
+            } else if (round <= 4) {
+                baseColor = '#131913'; jointColor = '#0b0f0b'; detailColor = '#1a221a'; 
+            } else if (round <= 6) {
+                baseColor = '#111722'; jointColor = '#0a0d14'; detailColor = '#1a2233'; 
+            } else if (round <= 9) {
+                baseColor = '#1c100b'; jointColor = '#100906'; detailColor = '#291811'; 
+            } else {
+                baseColor = '#1a0808'; jointColor = '#0e0404'; detailColor = '#2b1010'; 
+            }
+
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(-50, -50, canvas.width + 100, canvas.height + 100);
+
+            const tileWidth = 160 * gameScale;
+            const tileHeight = 80 * gameScale;
+            ctx.strokeStyle = jointColor;
+            ctx.lineWidth = 3 * gameScale;
+
+            let startY = (scrollOffset % tileHeight) - tileHeight - 50;
+            let startX = -50;
+
+            for (let y = startY; y < canvas.height + 50; y += tileHeight) {
+                let isOffsetRow = Math.floor((y - startY) / tileHeight) % 2 === 0;
+                let rowOffsetX = isOffsetRow ? tileWidth / 2 : 0;
+
+                ctx.beginPath();
+                ctx.moveTo(-50, y);
+                ctx.lineTo(canvas.width + 50, y);
+                ctx.stroke();
+
+                for (let x = startX - tileWidth + rowOffsetX; x < canvas.width + 50; x += tileWidth) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x, y + tileHeight);
+                    ctx.stroke();
+
+                    ctx.fillStyle = detailColor;
+                    if ((x + y) % 3 === 0) {
+                        ctx.fillRect(x + 10*gameScale, y + 15*gameScale, 30*gameScale, 2*gameScale);
+                        ctx.fillRect(x + 10*gameScale, y + 15*gameScale, 2*gameScale, 10*gameScale);
+                    }
+                    if ((x + y) % 5 === 0) {
+                        ctx.fillRect(x + tileWidth - 40*gameScale, y + tileHeight - 20*gameScale, 20*gameScale, 2*gameScale);
+                    }
+                }
+            }
+        }
+
+        function showBuffMessage(text, color) {
+            buffIndicator.innerText = text; buffIndicator.style.color = color; buffIndicator.style.opacity = 1;
+            setTimeout(() => { buffIndicator.style.opacity = 0; }, 2000);
+        }
+
+        function setupRoundStats(targetRound) {
+            gameConfig.round = targetRound;
+            gameConfig.timeRemaining = ROUND_TIMES[targetRound];
+            gameConfig.baseScrollSpeed = 2.5 + (targetRound - 1) * 0.5;
+            
+            if (isTouchDevice) {
+                gameConfig.baseEnemySpawnRate = Math.max(650, 1800 - (targetRound - 1) * 120);
+            } else {
+                gameConfig.baseEnemySpawnRate = Math.max(500, 1400 - (targetRound - 1) * 100);
+            }
+            
+            gameConfig.requiredItems = ITEMS_REQUIRED[targetRound];
+            gameConfig.collectedItems = 0;
+            
+            if (targetRound === 10) { 
+                gameConfig.bossActive = true; 
+                boss = new Boss(); 
+                gameConfig.baseEnemySpawnRate = isTouchDevice ? 4500 : 3500; 
+            } else { 
+                gameConfig.bossActive = false; 
+                boss = null; 
+            }
+        }
+
+        function setupSecretStats() {
+            gameConfig.isSecretLevel = true;
+            gameConfig.timeRemaining = 300; 
+            gameConfig.baseEnemySpawnRate = isTouchDevice ? 600 : 450; 
+            gameConfig.baseScrollSpeed = 5.0; 
+            gameConfig.requiredItems = 0;
+            gameConfig.collectedItems = 0;
+            gameConfig.bossActive = false;
+            boss = null;
+            document.getElementById('relicsContainerHUD').classList.remove('hidden');
+            
+            secretFragments = { Piedra: false, Niebla: false, Corona: false };
+            activeSecretFragments = [];
+            backgroundMessages = [];
+            lastMessageSpawn = performance.now();
+            realExitPortal = { active: false, x: 0, y: 0, spawned: false };
+            lastFragmentSpawn = performance.now();
+            shadowBoss = new ShadowOfArgal();
+            gameConfig.shadowBossActive = true;
+        }
+
+        function startSecretLevel() {
+            portal.active = false;
+            portal.spawned = true; 
+            
+            setupSecretStats();
+            showRoundTitle("EL ABISMO INSONDABLE", "Sobrevive 5 minutos de locura absoluta", "#a855f7");
+        }
+
+        function checkCollisions() {
+            let alivePlayers = players.filter(p => !p.dead);
+            
+            for (let obs of obstacles) {
+                for (let p of alivePlayers) {
+                    let dx = p.x - (obs.x + obs.width / 2);
+                    let dy = p.y - (obs.y + obs.height / 2);
+                    let aw = (p.width / 2) + (obs.width / 2);
+                    let ah = (p.height / 2) + (obs.height / 2);
+
+                    if (Math.abs(dx) < aw && Math.abs(dy) < ah) {
+                        let overlapX = aw - Math.abs(dx);
+                        let overlapY = ah - Math.abs(dy);
+
+                        if (overlapX >= overlapY) {
+                            if (dy > 0) p.y += overlapY; 
+                            else p.y -= overlapY;
+                        } else {
+                            if (dx > 0) p.x += overlapX;
+                            else p.x -= overlapX;
+                        }
+                    }
+                }
+            }
+
+            if (!gameConfig.isSecretLevel) {
+                for (let i = items.length - 1; i >= 0; i--) {
+                    let it = items[i];
+                    for (let p of alivePlayers) {
+                        let dist = Math.sqrt(Math.pow(p.x - it.x, 2) + Math.pow(p.y - it.y, 2));
+                        let magnetRadius = (p.width/2) * (1 + (upgrades.magnet * 0.20));
+                        if (dist < magnetRadius + it.radius) {
+                            gameConfig.collectedItems++;
+                            coins += 5; 
+                            saveShopAndCoins();
+                            createExplosion(it.x, it.y, '#ffd700', 12);
+                            
+                            if (gameConfig.collectedItems === gameConfig.requiredItems) {
+                                showBuffMessage("¡RELIQUIAS ASEGURADAS! SOBREVIVE", "#44ff44");
+                            }
+                            
+                            items.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+            } else {
+                for (let i = activeSecretFragments.length - 1; i >= 0; i--) {
+                    let f = activeSecretFragments[i];
+                    for (let p of alivePlayers) {
+                        let dist = Math.sqrt(Math.pow(p.x - f.x, 2) + Math.pow(p.y - f.y, 2));
+                        let magnetRadius = (p.width/2) * (1 + (upgrades.magnet * 0.20));
+                        if (dist < magnetRadius + f.radius) {
+                            secretFragments[f.type] = true;
+                            createExplosion(f.x, f.y, f.type === 'Niebla' ? '#39ff14' : (f.type === 'Corona' ? '#ffd700' : '#aaaaaa'), 20);
+                            showBuffMessage(`¡Fragmento de ${f.type}!`, f.type === 'Niebla' ? '#39ff14' : (f.type === 'Corona' ? '#ffd700' : '#aaaaaa'));
+                            activeSecretFragments.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+
+                if (gameConfig.shadowBossActive && shadowBoss) {
+                    for (let p of alivePlayers) {
+                        let dist = Math.sqrt(Math.pow(p.x - shadowBoss.x, 2) + Math.pow(p.y - shadowBoss.y, 2));
+                        if (dist < p.width/2 + shadowBoss.hitRadius) {
+                            p.takeDamage(15); 
+                        }
+                    }
+                }
+            }
+
+            for (let i = powerUps.length - 1; i >= 0; i--) {
+                let pu = powerUps[i]; 
+                for (let p of alivePlayers) {
+                    let dist = Math.sqrt(Math.pow(p.x - pu.x, 2) + Math.pow(p.y - pu.y, 2));
+                    let magnetRadius = (p.width/2) * (1 + (upgrades.magnet * 0.20));
+                    if (dist < magnetRadius + pu.radius) { applyPowerUp(pu.type, p); powerUps.splice(i, 1); break; }
+                }
+            }
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let proj = projectiles[i]; 
+                for (let p of alivePlayers) {
+                    let dist = Math.sqrt(Math.pow(p.x - proj.x, 2) + Math.pow(p.y - proj.y, 2));
+                    if (dist < p.width/2 + proj.radius) {
+                        p.takeDamage(proj.damage + (gameConfig.round * 2));
+                        projectiles.splice(i, 1); break;
+                    }
+                }
+            }
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i]; 
+                for (let p of alivePlayers) {
+                    let dist = Math.sqrt(Math.pow(p.x - e.x, 2) + Math.pow(p.y - e.y, 2));
+                    if (dist < p.width/2 + e.width/2) {
+                        p.takeDamage(30);
+                        createExplosion(e.x, e.y, '#4b5320', 20); enemies.splice(i, 1); break;
+                    }
+                }
+            }
+            if (gameConfig.bossActive && boss) {
+                for (let p of alivePlayers) {
+                    let dist = Math.sqrt(Math.pow(p.x - boss.x, 2) + Math.pow(p.y - boss.y, 2));
+                    if (dist < p.width/2 + boss.hitRadius) { p.takeDamage(8); }
+                }
+            }
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0'); const s = (seconds % 60).toString().padStart(2, '0'); return `${m}:${s}`;
+        }
+
+        function updateHUD() {
+            let alivePlayers = players.filter(p => !p.dead);
+
+            players.forEach(p => {
+                let fill = document.getElementById(`healthFill${p.id}`);
+                let container = document.getElementById(`healthContainerP${p.id}`);
+                if (!fill || !container) return;
+                
+                if (p.dead) { fill.style.width = '0%'; return; }
+
+                let healthPercent = Math.max(0, (p.health / p.maxHealth) * 100); 
+                fill.style.width = `${healthPercent}%`;
+                
+                if (gameConfig.isSecretLevel) {
+                    container.classList.add('corrupted-health');
+                } else {
+                    container.classList.remove('corrupted-health');
+                }
+
+                if (activeEffects.shieldActive) fill.style.background = 'linear-gradient(90deg, #ffd700, #ffffe0)';
+                else {
+                    if (p.id === 1) {
+                        if (healthPercent > 50) fill.style.background = 'linear-gradient(90deg, #2e8b57, #3cb371)';
+                        else if (healthPercent > 25) fill.style.background = 'linear-gradient(90deg, #d2691e, #cd853f)';
+                        else fill.style.background = 'linear-gradient(90deg, #8b0000, #ff0000)';
+                    } else {
+                        if (healthPercent > 50) fill.style.background = 'linear-gradient(90deg, #0055aa, #0088ff)';
+                        else if (healthPercent > 25) fill.style.background = 'linear-gradient(90deg, #7a00c4, #a000ff)';
+                        else fill.style.background = 'linear-gradient(90deg, #4a0000, #880000)';
+                    }
+                }
+            });
+
+            if (gameConfig.isSecretLevel) {
+                roundDisplay.innerText = `???`; 
+                roundContainer.classList.add('boss-alert', 'glitch-text'); 
+                timeDisplay.classList.replace('text-yellow-100', 'text-purple-400');
+                
+                let btnPause = document.getElementById('pauseBtn');
+                if (Math.random() < 0.05) btnPause.innerText = "E R R O R";
+                else if (Math.random() < 0.05) btnPause.innerText = "N O H U Y A S";
+                
+                let hudEl = document.getElementById('hud');
+                if (Math.random() < 0.1) hudEl.classList.add('glitch-text');
+                else hudEl.classList.remove('glitch-text');
+
+                let collectedCount = (secretFragments.Piedra ? 1 : 0) + (secretFragments.Niebla ? 1 : 0) + (secretFragments.Corona ? 1 : 0);
+                if (collectedCount >= 3) {
+                    relicsDisplay.className = "text-purple-400 font-bold animate-pulse";
+                    relicsDisplay.innerText = `¡SALIDA ABIERTA!`;
+                } else {
+                    relicsDisplay.className = "text-gray-400 font-bold";
+                    relicsDisplay.innerText = `Fragmentos: ${collectedCount}/3`;
+                }
+            } else { 
+                roundContainer.classList.remove('glitch-text');
+                document.getElementById('pauseBtn').innerText = "⏸️";
+                document.getElementById('hud').classList.remove('glitch-text');
+
+                if (gameConfig.round === 10) { 
+                    roundDisplay.innerText = `REY DEMONIO`; roundContainer.classList.add('boss-alert'); timeDisplay.classList.replace('text-yellow-100', 'text-red-400'); 
+                } else { 
+                    roundDisplay.innerText = `${gameConfig.round}/${TOTAL_ROUNDS}`; roundContainer.classList.remove('boss-alert'); timeDisplay.classList.replace('text-red-400', 'text-yellow-100');
+                }
+                
+                document.getElementById('relicsContainerHUD').classList.remove('hidden');
+                if (gameConfig.collectedItems >= gameConfig.requiredItems) {
+                    relicsDisplay.className = "text-green-400 font-bold animate-pulse";
+                    relicsDisplay.innerText = `¡COMPLETO! (${gameConfig.collectedItems}/${gameConfig.requiredItems})`;
+                } else {
+                    relicsDisplay.className = "text-yellow-400 font-bold";
+                    relicsDisplay.innerText = `${gameConfig.collectedItems}/${gameConfig.requiredItems}`;
+                }
+            }
+
+            timeDisplay.innerText = formatTime(gameConfig.timeRemaining);
+        }
+
+        function drawCursedFog() {
+            let secretFogOffset = gameConfig.isSecretLevel ? 70 * gameScale : 0;
+            const deathZoneY = canvas.height - (50 * gameScale) - secretFogOffset; 
+            fogPhase += (0.05 + (gameConfig.round * 0.01)); 
+            
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-50, deathZoneY, canvas.width + 100, canvas.height - deathZoneY + 100);
+
+            ctx.save();
+            if (gameConfig.isSecretLevel) ctx.fillStyle = '#080011';
+            else if (gameConfig.round === 10) ctx.fillStyle = '#150000'; 
+            else if (gameConfig.round >= 7) ctx.fillStyle = '#1a0500'; 
+            else if (gameConfig.round >= 5) ctx.fillStyle = '#00051a'; 
+            else if (gameConfig.round >= 3) ctx.fillStyle = '#051a05'; 
+            else ctx.fillStyle = '#05000a';
+            
+            ctx.fillRect(-50, deathZoneY, canvas.width + 100, canvas.height - deathZoneY + 100);
+            
+            for(let layer=0; layer<3; layer++) {
+                ctx.beginPath(); ctx.moveTo(-50, canvas.height + 50); ctx.lineTo(-50, deathZoneY + layer*15*gameScale);
+                for (let x = -50; x <= canvas.width + 50; x += 30*gameScale) {
+                    let yOffset = Math.sin(x * 0.02 + fogPhase + layer) * 15 * gameScale; 
+                    let yOffset2 = Math.cos(x * 0.05 - fogPhase * 0.8 + layer) * 10 * gameScale;
+                    ctx.lineTo(x, deathZoneY + layer*10*gameScale + yOffset + yOffset2 + 10*gameScale);
+                }
+                ctx.lineTo(canvas.width + 50, canvas.height + 50); ctx.closePath();
+                
+                if (gameConfig.isSecretLevel) {
+                    if (layer === 0) ctx.fillStyle = 'rgba(25, 0, 50, 0.9)'; else if (layer === 1) ctx.fillStyle = 'rgba(50, 0, 100, 0.7)'; else ctx.fillStyle = 'rgba(80, 0, 150, 0.5)';
+                }
+                else if (gameConfig.round === 10) { if (layer === 0) ctx.fillStyle = 'rgba(80, 0, 0, 0.8)'; else if (layer === 1) ctx.fillStyle = 'rgba(120, 0, 0, 0.6)'; else ctx.fillStyle = 'rgba(200, 0, 0, 0.4)'; } 
+                else if (gameConfig.round >= 7) { if (layer === 0) ctx.fillStyle = 'rgba(80, 20, 0, 0.8)'; else if (layer === 1) ctx.fillStyle = 'rgba(120, 40, 0, 0.6)'; else ctx.fillStyle = 'rgba(180, 60, 0, 0.4)'; } 
+                else if (gameConfig.round >= 5) { if (layer === 0) ctx.fillStyle = 'rgba(0, 20, 60, 0.8)'; else if (layer === 1) ctx.fillStyle = 'rgba(0, 40, 100, 0.6)'; else ctx.fillStyle = 'rgba(0, 80, 150, 0.4)'; } 
+                else if (gameConfig.round >= 3) { if (layer === 0) ctx.fillStyle = 'rgba(10, 40, 10, 0.8)'; else if (layer === 1) ctx.fillStyle = 'rgba(20, 70, 20, 0.6)'; else ctx.fillStyle = 'rgba(40, 120, 40, 0.4)'; } 
+                else { if (layer === 0) ctx.fillStyle = 'rgba(20, 0, 40, 0.8)'; else if (layer === 1) ctx.fillStyle = 'rgba(50, 0, 80, 0.6)'; else ctx.fillStyle = 'rgba(100, 0, 150, 0.4)'; }
+                ctx.fill();
+
+                if (layer === 0) {
+                    ctx.lineWidth = 3 * gameScale;
+                    ctx.strokeStyle = 'rgba(57, 255, 20, 0.6)';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#39ff14';
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            ctx.fillStyle = '#39ff14';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#39ff14';
+            for (let x = 0; x < canvas.width; x += 45 * gameScale) {
+                let yBase = deathZoneY + Math.sin(x * 0.02 + fogPhase) * 15 * gameScale;
+                let bubbleY = yBase - ((fogPhase * 40 + x * 11) % (100 * gameScale)); 
+                let bubbleSize = ((x * 7) % 3 + 1.5) * gameScale;
+                ctx.globalAlpha = Math.max(0, 1 - (yBase - bubbleY) / (100 * gameScale)); 
+                ctx.beginPath();
+                ctx.arc(x, bubbleY, bubbleSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+            ctx.shadowBlur = 0;
+            
+            let alivePlayers = players.filter(p => !p.dead);
+            alivePlayers.forEach(p => {
+                if (p.y > deathZoneY - 30 * gameScale) {
+                    ctx.fillStyle = `rgba(57, 255, 20, ${Math.abs(Math.sin(fogPhase * 2))})`; ctx.font = `bold ${16*gameScale}px 'Cinzel', serif`; ctx.textAlign = "center";
+                    ctx.shadowBlur = 10; ctx.shadowColor = '#39ff14'; ctx.fillText("¡NIEBLA RADIANTE!", p.x, p.y - 30*gameScale);
+                }
+            });
+            ctx.restore();
+        }
+
+        function drawAmbientLight() {
+            let gradient = ctx.createRadialGradient(
+                canvas.width / 2, canvas.height / 2, canvas.width * 0.25, 
+                canvas.width / 2, canvas.height / 2, canvas.width * 0.75
+            );
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            
+            if (gameConfig.isSecretLevel) {
+                gradient.addColorStop(1, 'rgba(20, 0, 40, 0.8)'); 
+            } else if (gameConfig.round === 10) {
+                gradient.addColorStop(1, 'rgba(30, 2, 2, 0.6)');
+            } else {
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
+            }
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(-50, -50, canvas.width + 100, canvas.height + 100);
+        }
+
+        function checkAndProcessCheckpoint() {
+            if (gameConfig.isSecretLevel) return; 
+            
+            let isCheckpoint = false;
+            if (isTouchDevice) {
+                if (gameConfig.round % 2 === 0 || gameConfig.round === 10) isCheckpoint = true;
+            } else {
+                if (gameConfig.round === 3 || gameConfig.round === 6 || gameConfig.round === 9 || gameConfig.round === 10) isCheckpoint = true;
+            }
+
+            if (isCheckpoint) {
+                gameConfig.checkpointRound = gameConfig.round;
+                saveGameProgress(gameConfig.round);
+            }
+        }
+
+        function updateEffectsTimers(dt) {
+            if (activeEffects.speedTimer > 0 && dt > activeEffects.speedTimer) { activeEffects.speedMultiplier = 1.0; activeEffects.speedTimer = 0; }
+            if (activeEffects.shieldTimer > 0 && dt > activeEffects.shieldTimer) { activeEffects.shieldActive = false; activeEffects.shieldTimer = 0; }
+            if (activeEffects.freezeTimer > 0 && dt > activeEffects.freezeTimer) { activeEffects.freezeMultiplier = 1.0; activeEffects.freezeTimer = 0; }
+            if (activeEffects.bossStunTimer > 0 && dt > activeEffects.bossStunTimer) { activeEffects.bossStunned = false; activeEffects.bossStunTimer = 0; }
+        }
+
+        function getTransitionText(round) {
+            let mapName = "El Puente del Calabozo";
+            let subText = "";
+            let titleColor = "#d4af37";
+
+            if (round === 2) { subText = "¡Cuidado: Orcos Berserkers!"; }
+            if (round === 3 || round === 4) { mapName = "El Bosque Maldito"; titleColor = "#4ade80"; } 
+            if (round === 4) { subText = "¡Cuidado: Arqueros Esqueleto!"; }
+            if (round === 5 || round === 6) { mapName = "La Fortaleza Helada"; titleColor = "#93c5fd"; } 
+            if (round === 6) { subText = "¡Cuidado: Sacerdotes Corruptos!"; }
+            if (round === 7 || round === 8) { mapName = "Profundidades Volcánicas"; titleColor = "#f97316"; } 
+            if (round === 7) { subText = "¡Aparecen Bendiciones!"; }
+            if (round === 8) { subText = "¡Cuidado: Caballeros Caídos!"; }
+            if (round === 9) { mapName = "Las Puertas del Rey"; titleColor = "#ef4444"; } 
+
+            return { mapName, subText, titleColor };
+        }
+
+        function gameLoop(timestamp) {
+            if (!isPlaying || isPaused) return;
+            let dt = timestamp; gameConfig.globalTime = timestamp;
+            updateEffectsTimers(dt);
+
+            let alivePlayers = players.filter(p => !p.dead);
+
+            if (gameConfig.round === 6 && gameConfig.timeRemaining === 120 && !portal.spawned && !gameConfig.isSecretLevel) {
+                portal.active = true;
+                portal.spawned = true;
+                portal.timer = timestamp + 10000; 
+                portal.x = Math.random() > 0.5 ? 80*gameScale : canvas.width - 80*gameScale; 
+                portal.y = canvas.height - 120*gameScale;
+                showBuffMessage("¡UN PORTAL OSCURO HA APARECIDO!", "#8b008b");
+            }
+
+            if (timestamp - gameConfig.lastSecondTime >= 1000) {
+                gameConfig.timeRemaining--; gameConfig.lastSecondTime = timestamp;
+
+                if (gameConfig.timeRemaining <= 0) {
+                    if (gameConfig.isSecretLevel) {
+                        endGame(false, 'secret_timeout');
+                        return;
+                    }
+                    if (gameConfig.collectedItems < gameConfig.requiredItems && !gameConfig.isSecretLevel) {
+                        endGame(false, 'insufficient_items');
+                        return;
+                    }
+                    if (gameConfig.round >= TOTAL_ROUNDS) { 
+                        endGame(true); 
+                        return; 
+                    } 
+                    
+                    gameConfig.round++;
+                    setupRoundStats(gameConfig.round);
+                    checkAndProcessCheckpoint();
+                    
+                    alivePlayers.forEach(p => p.health = p.maxHealth); 
+                    enemies = []; projectiles = []; powerUps = []; items = []; obstacles = [];
+
+                    if (gameConfig.round === 10) {
+                        showRoundTitle("EL REY DEMONIO", "Sobrevive 8 Minutos", "#dc2626");
+                        triggerScreenShake(30); 
+                        for(let i=0; i<60; i++) particles.push(new Particle(canvas.width/2, 100*gameScale, '#ff0000', false, 2.5));
+                    } else {
+                        let txt = getTransitionText(gameConfig.round);
+                        showRoundTitle(`OLEADA ${gameConfig.round}`, txt.mapName, txt.titleColor);
+                    }
+                }
+            }
+
+            if (portal.active) {
+                if (timestamp > portal.timer) {
+                    portal.active = false;
+                } else {
+                    ctx.save();
+                    ctx.translate(portal.x, portal.y);
+                    ctx.scale(gameScale, gameScale);
+                    ctx.rotate(timestamp * 0.005);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 35, 0, Math.PI * 2);
+                    let grad = ctx.createRadialGradient(0,0,5, 0,0,35);
+                    grad.addColorStop(0, '#000000');
+                    grad.addColorStop(0.5, '#4b0082');
+                    grad.addColorStop(1, 'rgba(139, 0, 139, 0)');
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                    ctx.fillStyle = '#ff00ff';
+                    ctx.fillRect(Math.cos(timestamp*0.01)*20, Math.sin(timestamp*0.01)*20, 3, 3);
+                    ctx.fillRect(Math.cos(timestamp*0.01+Math.PI)*20, Math.sin(timestamp*0.01+Math.PI)*20, 3, 3);
+                    ctx.restore();
+
+                    alivePlayers.forEach(p => {
+                        let dist = Math.sqrt(Math.pow(p.x - portal.x, 2) + Math.pow(p.y - portal.y, 2));
+                        if (dist < 45 * gameScale) {
+                            startSecretLevel();
+                        }
+                    });
+                }
+            }
+
+            if (gameConfig.isSecretLevel) {
+                let rainProb = isTouchDevice ? 0.10 : 0.15;
+                if (Math.random() < rainProb) {
+                    let rx = Math.random() * canvas.width;
+                    projectiles.push(new Projectile(rx, -20 * gameScale, 0, 12 + Math.random() * 6, 'black_rain'));
+                }
+
+                if (!realExitPortal.spawned) {
+                    if (timestamp - lastFragmentSpawn > 15000) {
+                        let missing = [];
+                        if (!secretFragments.Piedra && !activeSecretFragments.some(f => f.type === 'Piedra')) missing.push('Piedra');
+                        if (!secretFragments.Niebla && !activeSecretFragments.some(f => f.type === 'Niebla')) missing.push('Niebla');
+                        if (!secretFragments.Corona && !activeSecretFragments.some(f => f.type === 'Corona')) missing.push('Corona');
+                        
+                        if (missing.length > 0) {
+                            let type = missing[Math.floor(Math.random() * missing.length)];
+                            let pX = Math.random() * (canvas.width - 80*gameScale) + 40*gameScale;
+                            activeSecretFragments.push(new SecretFragment(type, pX, -30*gameScale));
+                            lastFragmentSpawn = timestamp;
+                            showBuffMessage(`Ha aparecido el Fragmento de ${type}`, "#a855f7");
+                        }
+                    }
+                } else {
+                    if (realExitPortal.active) {
+                        realExitPortal.y += getScrollSpeed() * 0.5;
+                        
+                        ctx.save();
+                        ctx.translate(realExitPortal.x, realExitPortal.y);
+                        ctx.scale(gameScale, gameScale);
+                        ctx.rotate(timestamp * -0.005);
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 45, 0, Math.PI * 2);
+                        let grad = ctx.createRadialGradient(0,0,5, 0,0,45);
+                        grad.addColorStop(0, '#ffffff');
+                        grad.addColorStop(0.5, '#ffd700');
+                        grad.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                        ctx.fillStyle = grad;
+                        ctx.fill();
+                        ctx.restore();
+
+                        alivePlayers.forEach(p => {
+                            let dist = Math.sqrt(Math.pow(p.x - realExitPortal.x, 2) + Math.pow(p.y - realExitPortal.y, 2));
+                            if (dist < 50 * gameScale) {
+                                endGame(true, 'secret_victory');
+                            }
+                        });
+                        
+                        if (realExitPortal.y > canvas.height + 100 * gameScale) {
+                            realExitPortal.y = -50 * gameScale;
+                            realExitPortal.x = Math.random() * (canvas.width - 100*gameScale) + 50*gameScale;
+                        }
+                    }
+                }
+                
+                if (timestamp - lastMessageSpawn > (Math.random() * 5000 + 4000)) {
+                    backgroundMessages.push(new BackgroundMessage(SECRET_MESSAGES[Math.floor(Math.random() * SECRET_MESSAGES.length)], canvas.width, canvas.height));
+                    lastMessageSpawn = timestamp;
+                }
+            }
+
+            let collectedCount = (secretFragments.Piedra ? 1 : 0) + (secretFragments.Niebla ? 1 : 0) + (secretFragments.Corona ? 1 : 0);
+            if (gameConfig.isSecretLevel && collectedCount === 3 && !realExitPortal.spawned) {
+                realExitPortal.spawned = true;
+                realExitPortal.active = true;
+                realExitPortal.x = canvas.width / 2;
+                realExitPortal.y = -50 * gameScale; 
+                showBuffMessage("¡LA SALIDA HA SIDO REVELADA!", "#ffffff");
+            }
+
+            ctx.save();
+            if (screenShake > 0.5) {
+                ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+                screenShake *= 0.9; 
+            }
+
+            let scrollOffset = gameConfig.globalTime * getScrollSpeed() * 0.05;
+            drawMedievalBricks(gameConfig.round, scrollOffset);
+
+            if (gameConfig.isSecretLevel) {
+                for (let i = backgroundMessages.length - 1; i >= 0; i--) {
+                    if (!backgroundMessages[i].update()) {
+                        backgroundMessages.splice(i, 1);
+                    } else {
+                        backgroundMessages[i].draw(ctx);
+                    }
+                }
+            }
+
+            if (timestamp - lastEnemySpawn > gameConfig.baseEnemySpawnRate) {
+                let side = Math.random() > 0.5 ? 'left' : 'right';
+                enemies.push(new Enemy(side, getAvailableEnemyTypes(gameConfig.round)));
+                lastEnemySpawn = timestamp;
+            }
+
+            if (!gameConfig.isSecretLevel && gameConfig.round >= 7 && timestamp - lastPowerUpSpawn > (Math.random()*10000 + 15000)) {
+                let puTypes = ['health', 'speed', 'shield', 'freeze', 'bomb'];
+                if (gameConfig.round === 10) puTypes.push('holy_sword'); 
+                let selectedPu = puTypes[Math.floor(Math.random() * puTypes.length)];
+                let pX = Math.random() * (canvas.width - 60*gameScale) + 30*gameScale;
+                powerUps.push(new PowerUp(selectedPu, pX, -50*gameScale)); lastPowerUpSpawn = timestamp;
+            }
+
+            if (!gameConfig.isSecretLevel && timestamp - lastItemSpawn > 1300) {
+                if (gameConfig.collectedItems < gameConfig.requiredItems) {
+                    let pX = Math.random() * (canvas.width - 60*gameScale) + 30*gameScale;
+                    items.push(new CollectibleItem(pX, -30*gameScale));
+                }
+                lastItemSpawn = timestamp;
+            }
+
+            let isObstacleRound = (gameConfig.round >= 3 && gameConfig.round <= 5) || gameConfig.round === 10;
+            if (!gameConfig.isSecretLevel && isObstacleRound) {
+                let obsSpawnRate = isTouchDevice ? 4000 : 2500;
+                if (timestamp - lastObstacleSpawn > obsSpawnRate) {
+                    obstacles.push(new Obstacle());
+                    lastObstacleSpawn = timestamp;
+                }
+            }
+
+            players.forEach(p => p.update(dt));
+            
+            if (gameConfig.bossActive && boss) boss.update(dt, alivePlayers, projectiles);
+
+            if (gameConfig.isSecretLevel) {
+                for (let i = activeSecretFragments.length - 1; i >= 0; i--) { 
+                    if (!activeSecretFragments[i].update()) {
+                        activeSecretFragments.splice(i, 1);
+                    } else {
+                        activeSecretFragments[i].draw(ctx);
+                    }
+                }
+                if (gameConfig.shadowBossActive && shadowBoss) {
+                    shadowBoss.update(dt, alivePlayers);
+                    shadowBoss.draw(ctx);
+                }
+            }
+
+            for (let i = items.length - 1; i >= 0; i--) { if (!items[i].update()) items.splice(i, 1); else items[i].draw(ctx); }
+            for (let i = powerUps.length - 1; i >= 0; i--) { if (!powerUps[i].update()) powerUps.splice(i, 1); else powerUps[i].draw(ctx); }
+            for (let i = enemies.length - 1; i >= 0; i--) { if (!enemies[i].update(dt, alivePlayers, projectiles)) enemies.splice(i, 1); else enemies[i].draw(ctx); }
+            for (let i = projectiles.length - 1; i >= 0; i--) { if (!projectiles[i].update(dt)) projectiles.splice(i, 1); else projectiles[i].draw(ctx); }
+            for (let i = particles.length - 1; i >= 0; i--) { if (!particles[i].update()) particles.splice(i, 1); else particles[i].draw(ctx); }
+            for (let i = obstacles.length - 1; i >= 0; i--) { if (!obstacles[i].update()) obstacles.splice(i, 1); else obstacles[i].draw(ctx); }
+
+            checkCollisions();
+            
+            if (players.length > 0 && players.every(p => p.dead)) { 
+                ctx.restore(); 
+                canvas.style.filter = 'none'; 
+                endGame(false, 'killed_in_combat'); 
+                return; 
+            }
+
+            players.forEach(p => p.draw(ctx)); 
+            drawCursedFog(); 
+            drawAmbientLight();
+            ctx.restore(); 
+            
+            let anyPlayerDebuffed = alivePlayers.some(p => dt < p.fogDebuffTimer);
+            let targetFilter = anyPlayerDebuffed ? 'blur(3.5px)' : 'none';
+            if (canvas.style.filter !== targetFilter) {
+                canvas.style.filter = targetFilter;
+            }
+            
+            updateHUD();
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        function startGame(useCheckpoint = false, specificRound = null) {
+            mainMenu.classList.add('hidden'); gameOverScreen.classList.add('hidden');
+            victoryScreen.classList.add('hidden'); pauseScreen.classList.add('hidden');
+            secretVictoryScreen.classList.add('hidden');
+            shopScreen.classList.add('hidden');
+            hud.classList.remove('hidden');
+
+            if (isTouchDevice) joystickZone.classList.remove('hidden');
+
+            loadShopAndCoins();
+
+            players = [];
+            players.push(new Player(1)); 
+            if (isCoop) {
+                players.push(new Player(2)); 
+                document.getElementById('healthContainer2').classList.remove('hidden');
+            } else {
+                document.getElementById('healthContainer2').classList.add('hidden');
+            }
+
+            enemies = []; projectiles = []; particles = []; powerUps = []; items = []; obstacles = [];
+            activeEffects = { speedMultiplier: 1.0, speedTimer: 0, shieldActive: false, shieldTimer: 0, freezeMultiplier: 1.0, freezeTimer: 0, bossStunned: false, bossStunTimer: 0 };
+            isPaused = false;
+            virtualJoystick.active = false; virtualJoystick.x = 0; virtualJoystick.y = 0;
+            screenShake = 0; 
+            gameConfig.isSecretLevel = false;
+            portal.active = false; portal.spawned = false;
+            canvas.style.filter = 'none'; 
+            
+            secretFragments = { Piedra: false, Niebla: false, Corona: false };
+            activeSecretFragments = [];
+            backgroundMessages = [];
+            realExitPortal = { active: false, x: 0, y: 0, spawned: false };
+            gameConfig.shadowBossActive = false;
+            shadowBoss = null;
+            
+            let startRound = 1;
+            
+            if (specificRound !== null) {
+                startRound = specificRound;
+            } else if (useCheckpoint) {
+                startRound = gameConfig.checkpointRound;
+            } else {
+                clearSaveData(); 
+                gameConfig.checkpointRound = 1;
+                startRound = 1;
+            }
+
+            setupRoundStats(startRound);
+            
+            gameConfig.lastSecondTime = performance.now();
+            lastEnemySpawn = performance.now(); lastPowerUpSpawn = performance.now(); lastItemSpawn = performance.now(); lastObstacleSpawn = performance.now();
+
+            document.getElementById('relicsContainerHUD').classList.remove('hidden');
+            checkpointIndicator.classList.add('hidden');
+            roundContainer.classList.remove('boss-alert', 'glitch-text'); timeDisplay.classList.replace('text-red-400', 'text-yellow-100');
+            timeDisplay.classList.replace('text-purple-400', 'text-yellow-100');
+            document.getElementById('hud').classList.remove('glitch-text');
+            document.getElementById('pauseBtn').innerText = "⏸️";
+
+            if(startRound === 10) {
+                showRoundTitle("EL REY DEMONIO", "Sobrevive 8 Minutos", "#dc2626");
+                triggerScreenShake(30);
+                roundContainer.classList.add('boss-alert'); timeDisplay.classList.replace('text-yellow-100', 'text-red-400');
+            } else {
+                let txt = getTransitionText(startRound);
+                showRoundTitle(`OLEADA ${startRound}`, txt.mapName, txt.titleColor);
+            }
+
+            isPlaying = true;
+            cancelAnimationFrame(animationId); animationId = requestAnimationFrame(gameLoop);
+        }
+
+        document.getElementById('startBtn').addEventListener('click', () => startGame(false, 1));
+        document.getElementById('restartBtn').addEventListener('click', () => startGame(true)); 
+        document.getElementById('restartFullBtn').addEventListener('click', () => startGame(false, 1)); 
+        document.getElementById('playAgainBtn').addEventListener('click', () => startGame(false, 1));
+        document.getElementById('restartPauseBtn').addEventListener('click', () => {
+            isPaused = false;
+            pauseScreen.classList.add('hidden');
+            if (isTouchDevice) {
+                startGame(false, gameConfig.round);
+            } else {
+                startGame(true);
+            }
+        });
+
+        document.getElementById('goMenuBtn').addEventListener('click', showMainMenu);
+        document.getElementById('secretToMenuBtn').addEventListener('click', showMainMenu);
+        document.getElementById('quitToMenuBtn').addEventListener('click', showMainMenu);
+        document.getElementById('pauseBtn').addEventListener('click', togglePause);
+        document.getElementById('resumeBtn').addEventListener('click', togglePause);
+
+        function endGame(isVictory, reason) {
+            isPlaying = false; hud.classList.add('hidden');
+            joystickZone.classList.add('hidden');
+            canvas.style.filter = 'none';
+
+            if (reason === 'secret_victory') {
+                coins += 10000;
+                darkSkinUnlocked = true;
+                saveShopAndCoins();
+                secretVictoryScreen.classList.remove('hidden');
+                return;
+            }
+
+            let baseReward = isVictory ? gameConfig.round * 25 : gameConfig.round * 10; 
+            if (isTouchDevice) baseReward = Math.floor(baseReward * 1.20); 
+
+            let winBonus = isVictory ? 300 : 0; 
+            let totalBase = baseReward + winBonus;
+            
+            let multiplier = 1 + (upgrades.coinBonus * 0.25);
+            let totalGained = Math.round(totalBase * multiplier);
+
+            coins += totalGained;
+            saveShopAndCoins();
+            
+            if (isVictory) {
+                clearSaveData(); 
+                document.getElementById('victoryCoinsGained').innerText = totalGained;
+                victoryScreen.classList.remove('hidden');
+            } else {
+                if (reason === 'insufficient_items') {
+                    gameOverStats.innerText = `No lograste recolectar las ${gameConfig.requiredItems} reliquias requeridas. La niebla radiante consumió tu alma.`;
+                } else if (reason === 'secret_timeout') {
+                    gameOverStats.innerText = `La locura te consumió. No lograste escapar del Abismo a tiempo.`;
+                } else {
+                    gameOverStats.innerText = gameConfig.round === 10 
+                        ? `Caíste ante el Rey Demonio faltando ${formatTime(gameConfig.timeRemaining)}.`
+                        : `Tu alma se perdió en la Oleada ${gameConfig.round}.`;
+                }
+                
+                document.getElementById('gameOverCoinsGained').innerText = totalGained;
+
+                const restartBtn = document.getElementById('restartBtn');
+                let minRound = isTouchDevice ? 2 : 3;
+                if(gameConfig.checkpointRound >= minRound) {
+                    restartBtn.innerText = `Desde Checkpoint (${gameConfig.checkpointRound})`;
+                    restartBtn.classList.remove('hidden');
+                } else {
+                    restartBtn.classList.add('hidden'); 
+                }
+
+                gameOverScreen.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
